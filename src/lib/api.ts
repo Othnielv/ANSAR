@@ -745,6 +745,35 @@ export const caisseApi = {
     ),
 };
 
+// --- Opérations Diverses (Supabase via API Nest) ---
+
+export interface OperationDiversePayload {
+  id?: string;
+  partie: string;
+  type: 'entree' | 'sortie';
+  montant: number;
+  date: string;
+  description: string;
+  reference?: string;
+  utilisateur?: string;
+}
+
+export const operationsDiversesApi = {
+  getAll: () => request<Record<string, unknown>[]>('/operations-diverses'),
+  create: (data: OperationDiversePayload) =>
+    request<Record<string, unknown>>('/operations-diverses', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: Partial<OperationDiversePayload>) =>
+    request<Record<string, unknown>>(`/operations-diverses/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    request<void>(`/operations-diverses/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+};
+
 // --- Crédits (Supabase via API Nest) ---
 export interface CreditPayload {
   type: 'emprunt' | 'pret_accorde';

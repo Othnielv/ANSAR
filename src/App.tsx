@@ -23,6 +23,7 @@ import Chargements from "./pages/Chargements";
 import Fournisseurs from "./pages/Fournisseurs";
 import SuiviFournisseurs from "./pages/SuiviFournisseurs";
 import DepotGarouaBoulai from "./pages/DepotGarouaBoulai";
+import OperationsDiverses from "./pages/OperationsDiverses";
 import UsersPage from "./pages/Users";
 import NotFound from "./pages/NotFound";
 import { DocumentTitle } from "./components/DocumentTitle";
@@ -71,6 +72,7 @@ const App = () => (
               <Route path="/banque" element={<ProtectedRoute><Navigate to="/caisse" replace /></ProtectedRoute>} />
               <Route path="/depenses" element={<ProtectedRoute><Navigate to="/caisse" replace /></ProtectedRoute>} />
               <Route path="/caisse" element={<ProtectedRoute><Layout><Caisse /></Layout></ProtectedRoute>} />
+              <Route path="/operations-diverses" element={<ProtectedRoute><Layout><OperationsDiverses /></Layout></ProtectedRoute>} />
               <Route path="/credits" element={<Navigate to="/factures" replace />} />
               <Route path="/historique" element={<ProtectedRoute><Layout><AuditLogs /></Layout></ProtectedRoute>} />
               <Route path="/utilisateurs" element={<AdminRoute><Layout><UsersPage /></Layout></AdminRoute>} />

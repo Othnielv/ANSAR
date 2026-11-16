@@ -20,6 +20,7 @@ import { ArticlesModule } from './articles/articles.module';
 import { ClientOperationsModule } from './client-operations/client-operations.module';
 import { SupplierLoadingsModule } from './supplier-loadings/supplier-loadings.module';
 import { TjkDestinationsModule } from './tjk-destinations/tjk-destinations.module';
+import { OperationsDiversesModule } from './operations-diverses/operations-diverses.module';
 
 function buildTypeOrmOptions(): TypeOrmModuleOptions {
   const synchronize =
@@ -97,6 +98,7 @@ function buildTypeOrmOptions(): TypeOrmModuleOptions {
     ClientOperationsModule,
     SupplierLoadingsModule,
     TjkDestinationsModule,
+    OperationsDiversesModule,
   ],
 })
 export class AppModule {}
