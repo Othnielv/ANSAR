@@ -21,6 +21,7 @@ import { ClientOperationsModule } from './client-operations/client-operations.mo
 import { SupplierLoadingsModule } from './supplier-loadings/supplier-loadings.module';
 import { TjkDestinationsModule } from './tjk-destinations/tjk-destinations.module';
 import { OperationsDiversesModule } from './operations-diverses/operations-diverses.module';
+import { SupplierAccountsModule } from './supplier-accounts/supplier-accounts.module';
 
 function buildTypeOrmOptions(): TypeOrmModuleOptions {
   const synchronize =
@@ -99,6 +100,7 @@ function buildTypeOrmOptions(): TypeOrmModuleOptions {
     SupplierLoadingsModule,
     TjkDestinationsModule,
     OperationsDiversesModule,
+    SupplierAccountsModule,
   ],
 })
 export class AppModule {}

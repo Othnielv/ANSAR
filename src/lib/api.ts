@@ -774,6 +774,39 @@ export const operationsDiversesApi = {
     request<void>(`/operations-diverses/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
 
+// --- Soldes / Comptes Fournisseurs ---
+
+export interface SupplierAccountEntryPayload {
+  id?: string;
+  fournisseurId: string;
+  type: 'depot' | 'retrait' | 'emprunt' | 'remboursement';
+  montant: number;
+  date: string;
+  description: string;
+  reference?: string;
+  supplierLoadingId?: string;
+  utilisateur?: string;
+}
+
+export const supplierAccountsApi = {
+  getAll: (fournisseurId?: string) =>
+    request<Record<string, unknown>[]>(
+      `/supplier-accounts${fournisseurId ? `?fournisseurId=${encodeURIComponent(fournisseurId)}` : ''}`,
+    ),
+  create: (data: SupplierAccountEntryPayload) =>
+    request<Record<string, unknown>>('/supplier-accounts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: Partial<SupplierAccountEntryPayload>) =>
+    request<Record<string, unknown>>(`/supplier-accounts/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    request<void>(`/supplier-accounts/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+};
+
 // --- Crédits (Supabase via API Nest) ---
 export interface CreditPayload {
   type: 'emprunt' | 'pret_accorde';

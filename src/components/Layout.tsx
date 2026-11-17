@@ -24,6 +24,7 @@ import {
   KeyRound,
   BookOpen,
   Shuffle,
+  Landmark,
 } from 'lucide-react';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 import { formatRoleLabel } from '@/lib/auth-users';
@@ -61,6 +62,7 @@ const navigation = [
   { name: 'Chargements', href: '/chargements', icon: Container,     color: 'from-lime-500 to-green-500' },
   { name: 'Articles',   href: '/articles',   icon: Boxes,           color: 'from-amber-500 to-orange-500' },
   { name: 'Caisse',     href: '/caisse',     icon: Wallet,          color: 'from-green-500 to-emerald-500' },
+  { name: 'Soldes Fournisseurs', href: '/soldes-fournisseurs', icon: Landmark, color: 'from-rose-500 to-red-500' },
   { name: 'Opérations Diverses', href: '/operations-diverses', icon: Shuffle, color: 'from-indigo-500 to-purple-500' },
 ];
 
