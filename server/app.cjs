@@ -16,6 +16,7 @@ const depotGaroua = require('./routes/depot-garoua-boulai.cjs');
 const tjkOperations = require('./routes/tjk-operations.cjs');
 const tjkDestinations = require('./routes/tjk-destinations.cjs');
 const camrailOperations = require('./routes/camrail-operations.cjs');
+const supplierAccounts = require('./routes/supplier-accounts.cjs');
 const admin = require('./routes/admin.cjs');
 const users = require('./routes/users.cjs');
 const R = require('./routes/resources.cjs');
@@ -64,6 +65,7 @@ async function handleLocal(method, path, event, origin) {
           'tjk-operations',
           'tjk-destinations',
           'camrail-operations',
+          'supplier-accounts',
           'audit-logs',
           'admin',
           'users',
@@ -539,6 +541,26 @@ async function handleLocal(method, path, event, origin) {
     if (method === 'PATCH') return json(200, await credits.updateCredit(id, body(), actor), origin);
     if (method === 'DELETE') {
       await credits.deleteCredit(id, actor);
+      return noContent(origin);
+    }
+  }
+
+  // --- supplier accounts (soldes fournisseurs) ---
+  if (path === '/api/supplier-accounts') {
+    if (method === 'GET') return json(200, await supplierAccounts.listEntries(p.fournisseurId), origin);
+    if (method === 'POST') return json(201, await supplierAccounts.createEntry(body(), actor), origin);
+  }
+  m = path.match(/^\/api\/supplier-accounts\/([^/]+)$/);
+  if (m && UUID.test(m[1])) {
+    const id = m[1];
+    if (method === 'GET') {
+      const row = await supplierAccounts.getEntry(id);
+      if (!row) return json(404, { message: 'Mouvement introuvable' }, origin);
+      return json(200, row, origin);
+    }
+    if (method === 'PATCH') return json(200, await supplierAccounts.updateEntry(id, body(), actor), origin);
+    if (method === 'DELETE') {
+      await supplierAccounts.deleteEntry(id, actor);
       return noContent(origin);
     }
   }
