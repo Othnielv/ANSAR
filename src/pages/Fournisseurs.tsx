@@ -36,6 +36,12 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { frCollator, stableSort } from '@/lib/list-sort';
+import {
+  getSupplierAccountEntries,
+  refreshSupplierAccountsFromApi,
+  computeSupplierBalance,
+  type SupplierAccountEntry,
+} from '@/lib/supplier-accounts';
 import { cn } from '@/lib/utils';
 import { ExportButtons } from '@/components/ExportButtons';
 import {
@@ -76,6 +82,21 @@ export default function Fournisseurs() {
     () => searchParams.get('id'),
   );
   const [viewMode, setViewMode] = useState<'fournisseur' | 'fil'>('fournisseur');
+  const [accountEntries, setAccountEntries] = useState<SupplierAccountEntry[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const isRemote = Boolean(import.meta.env.VITE_API_URL?.trim());
+    (async () => {
+      try {
+        if (isRemote) await refreshSupplierAccountsFromApi();
+        if (!cancelled) setAccountEntries(getSupplierAccountEntries());
+      } catch {
+        /* silent — solde will just show 0 */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const fournisseurs = useMemo(
     () =>
@@ -492,7 +513,18 @@ export default function Fournisseurs() {
                 </p>
               ) : (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
+                    {(() => {
+                      const solde = computeSupplierBalance(accountEntries, selected.fournisseurId);
+                      return (
+                        <div className={`rounded-lg border-2 p-2 ${solde > 0 ? 'border-green-500/40 bg-green-500/5' : solde < 0 ? 'border-red-500/40 bg-red-500/5' : 'border-border'}`}>
+                          <p className={`text-lg font-bold ${solde > 0 ? 'text-green-600' : solde < 0 ? 'text-red-600' : ''}`}>
+                            {formatFcfa(solde)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Solde compte</p>
+                        </div>
+                      );
+                    })()}
                     <div className="rounded-lg border p-2">
                       <p className="text-lg font-bold">{selected.chargementsTotal}</p>
                       <p className="text-xs text-muted-foreground">Bons actifs</p>
@@ -594,6 +626,9 @@ export default function Fournisseurs() {
                     </Button>
                     <Button size="sm" variant="outline" asChild>
                       <Link to={`/chargements`}>Voir les bons</Link>
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                      <Link to={`/soldes-fournisseurs`}>Soldes fournisseurs</Link>
                     </Button>
                   </div>
                 </div>
