@@ -129,6 +129,8 @@ type LoadingFormState = {
   lieu: string;
   notes: string;
   statut: SupplierLoadingStatus | '';
+  /** Clients à attribuer directement au bon à la création (optionnel). */
+  clientIds: string[];
 };
 
 const emptyForm = (): LoadingFormState => ({
@@ -150,6 +152,7 @@ const emptyForm = (): LoadingFormState => ({
   lieu: '',
   notes: '',
   statut: '',
+  clientIds: [],
 });
 
 function formatFcfa(n: number): string {
@@ -504,11 +507,51 @@ export default function Chargements() {
         await updateSupplierLoading(editing.id, payload);
         toast.success('Bon mis à jour.');
       } else {
-        await createSupplierLoading({
+        const created = await createSupplierLoading({
           ...payload,
           statut: form.statut === 'brouillon' ? 'brouillon' : undefined,
         });
-        toast.success('Bon de chargement créé.');
+
+        if (form.clientIds.length > 0) {
+          const qtyPerClient =
+            form.quantite != null && form.quantite > 0
+              ? Math.floor(form.quantite / form.clientIds.length)
+              : undefined;
+          const assignments: SupplierLoadingAssignmentPayload[] = [];
+          for (const clientId of form.clientIds) {
+            const clientTp = clients.find((c) => c.id === clientId);
+            const clientFields = buildOrderClientFields(false, clientId, clientTp?.nom || '');
+            const order = await createClientOrder({
+              ...clientFields,
+              articleId: form.articleId || undefined,
+              designation: form.designation.trim(),
+              quantite: qtyPerClient,
+              unite: form.unite.trim() || undefined,
+              prixUnitaire: form.prixUnitaireFournisseur,
+              montant:
+                qtyPerClient != null && form.prixUnitaireFournisseur != null
+                  ? Math.round(qtyPerClient * form.prixUnitaireFournisseur)
+                  : form.montantBon != null && form.clientIds.length === 1
+                    ? form.montantBon
+                    : undefined,
+              statut: 'confirmee',
+              dateCommande: form.dateChargement,
+              notes: form.numeroBon
+                ? `Affectation directe — bon ${form.numeroBon.trim()}`
+                : 'Affectation directe à la création du bon',
+            });
+            assignments.push({
+              clientOrderId: order.id,
+              quantiteAffectee: qtyPerClient,
+            });
+          }
+          await setSupplierLoadingAssignments(created.id, assignments);
+          toast.success(
+            `Bon créé et attribué à ${form.clientIds.length} client${form.clientIds.length > 1 ? 's' : ''}.`,
+          );
+        } else {
+          toast.success('Bon de chargement créé.');
+        }
       }
       setDialogOpen(false);
     });
@@ -1456,6 +1499,41 @@ export default function Chargements() {
                     onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                   />
                 </div>
+                {!editing && (
+                  <div className="space-y-2 rounded-md border border-dashed p-3">
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Attribuer à un/des client(s) (optionnel)
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {clients.map((c) => (
+                        <label
+                          key={c.id}
+                          className="flex items-center gap-1.5 text-sm cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={form.clientIds.includes(c.id)}
+                            onCheckedChange={(checked) =>
+                              setForm((f) => ({
+                                ...f,
+                                clientIds: checked
+                                  ? [...f.clientIds, c.id]
+                                  : f.clientIds.filter((id) => id !== c.id),
+                              }))
+                            }
+                          />
+                          {c.nom}
+                        </label>
+                      ))}
+                    </div>
+                    {form.clientIds.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {form.clientIds.length} client{form.clientIds.length > 1 ? 's' : ''}{' '}
+                        sélectionné{form.clientIds.length > 1 ? 's' : ''} — une commande sera créée
+                        automatiquement pour chacun.
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="flex justify-end gap-2 pt-2">
                   <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                     Annuler
