@@ -204,7 +204,9 @@ async function createLoading(body, actor) {
       body.notes || null,
     ],
   );
-  return getLoading(id);
+  const row = await getLoading(id);
+  await audit('supplier-loadings', 'CREATE', id, `Bon ${designation || ''}`, null, row, actor);
+  return row;
 }
 
 async function updateLoading(id, body, actor) {

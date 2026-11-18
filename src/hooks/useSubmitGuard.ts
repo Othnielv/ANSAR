@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from ‘react’;
+import { toast } from ‘sonner’;
 
 /**
  * Empêche les doubles soumissions (double-clic pendant une requête lente).
@@ -15,6 +16,11 @@ export function useSubmitGuard() {
     setIsSubmitting(true);
     try {
       return await fn();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg || ‘Une erreur est survenue.’);
+      console.error(‘[withGuard]’, err);
+      return undefined;
     } finally {
       lockRef.current = false;
       setIsSubmitting(false);

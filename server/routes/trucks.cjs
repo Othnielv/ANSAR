@@ -2,6 +2,7 @@
 
 const { randomUUID } = require('crypto');
 const { query } = require('../db.cjs');
+const { audit } = require('../lib.cjs');
 
 function mapTruck(row) {
   if (!row) return null;
@@ -83,7 +84,9 @@ async function createTruck(body) {
       flotte,
     ],
   );
-  return getTruck(id);
+  const row = await getTruck(id);
+  await audit('trucks', 'CREATE', id, `Camion ${immatriculation}`, null, row);
+  return row;
 }
 
 async function updateTruck(id, body) {
@@ -129,11 +132,17 @@ async function updateTruck(id, body) {
       flotte,
     ],
   );
-  return getTruck(id);
+  const after = await getTruck(id);
+  await audit('trucks', 'UPDATE', id, `Modification camion ${after?.immatriculation || id}`, current, after);
+  return after;
 }
 
 async function deleteTruck(id) {
+  const before = await getTruck(id);
   const res = await query(`DELETE FROM trucks WHERE id = $1`, [id]);
+  if (res.rowCount > 0 && before) {
+    await audit('trucks', 'DELETE', id, `Suppression camion ${before.immatriculation}`, before, null);
+  }
   return res.rowCount > 0;
 }
 
