@@ -267,7 +267,20 @@ const emptyForm = (): FormState => ({
 });
 
 export default function Tjk() {
-  const { thirdParties, merchandiseQualities, supplierLoadings, updateSupplierLoading } = useApp();
+  const {
+    thirdParties,
+    merchandiseQualities,
+    supplierLoadings,
+    updateSupplierLoading,
+    refreshSupplierLoadings,
+    refreshClientOrders,
+    refreshInvoices,
+  } = useApp();
+
+  // Une opération TJK crée/maj les commandes clients du bon : on rafraîchit
+  // bons, commandes et factures pour que les autres écrans soient à jour.
+  const refreshLinkedData = () =>
+    Promise.allSettled([refreshSupplierLoadings(), refreshClientOrders(), refreshInvoices()]);
   const { user, canManageFleet } = useAuth();
   const { isSubmitting, withGuard } = useSubmitGuard();
 
@@ -632,7 +645,7 @@ export default function Tjk() {
             }
           }
         }
-        await loadAll();
+        await Promise.all([loadAll(), refreshLinkedData()]);
         setDialogOpen(false);
         resetForm();
       } catch (err) {
@@ -645,7 +658,7 @@ export default function Tjk() {
     if (!confirm('Supprimer cette opération TJK ?')) return;
     try {
       await deleteTjkOperation(id);
-      await loadAll();
+      await Promise.all([loadAll(), refreshLinkedData()]);
       toast.success('Opération supprimée.');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur suppression.');
