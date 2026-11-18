@@ -17,6 +17,7 @@ const tjkOperations = require('./routes/tjk-operations.cjs');
 const tjkDestinations = require('./routes/tjk-destinations.cjs');
 const camrailOperations = require('./routes/camrail-operations.cjs');
 const supplierAccounts = require('./routes/supplier-accounts.cjs');
+const operationsDiverses = require('./routes/operations-diverses.cjs');
 const admin = require('./routes/admin.cjs');
 const users = require('./routes/users.cjs');
 const R = require('./routes/resources.cjs');
@@ -66,6 +67,7 @@ async function handleLocal(method, path, event, origin) {
           'tjk-destinations',
           'camrail-operations',
           'supplier-accounts',
+          'operations-diverses',
           'audit-logs',
           'admin',
           'users',
@@ -541,6 +543,26 @@ async function handleLocal(method, path, event, origin) {
     if (method === 'PATCH') return json(200, await credits.updateCredit(id, body(), actor), origin);
     if (method === 'DELETE') {
       await credits.deleteCredit(id, actor);
+      return noContent(origin);
+    }
+  }
+
+  // --- operations diverses ---
+  if (path === '/api/operations-diverses') {
+    if (method === 'GET') return json(200, await operationsDiverses.listOperations(), origin);
+    if (method === 'POST') return json(201, await operationsDiverses.createOperation(body(), actor), origin);
+  }
+  m = path.match(/^\/api\/operations-diverses\/([^/]+)$/);
+  if (m) {
+    const id = decodeURIComponent(m[1]);
+    if (method === 'GET') {
+      const row = await operationsDiverses.getOperation(id);
+      if (!row) return json(404, { message: 'Opération diverse introuvable' }, origin);
+      return json(200, row, origin);
+    }
+    if (method === 'PATCH') return json(200, await operationsDiverses.updateOperation(id, body(), actor), origin);
+    if (method === 'DELETE') {
+      await operationsDiverses.deleteOperation(id, actor);
       return noContent(origin);
     }
   }

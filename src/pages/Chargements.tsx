@@ -514,24 +514,30 @@ export default function Chargements() {
 
         if (form.clientIds.length > 0) {
           try {
-            const qtyPerClient =
-              form.quantite != null && form.quantite > 0
-                ? Math.floor(form.quantite / form.clientIds.length)
-                : undefined;
+            const totalQty =
+              form.quantite != null && form.quantite > 0 ? form.quantite : null;
             const assignments: SupplierLoadingAssignmentPayload[] = [];
-            for (const clientId of form.clientIds) {
+            for (let i = 0; i < form.clientIds.length; i++) {
+              const clientId = form.clientIds[i];
+              let qtyForThis: number | undefined;
+              if (totalQty != null) {
+                const base = Math.floor(totalQty / form.clientIds.length);
+                const remainder = totalQty - base * form.clientIds.length;
+                qtyForThis = i < remainder ? base + 1 : base;
+                if (qtyForThis <= 0) qtyForThis = 1;
+              }
               const clientTp = clients.find((c) => c.id === clientId);
               const clientFields = buildOrderClientFields(false, clientId, clientTp?.nom || '');
               const order = await createClientOrder({
                 ...clientFields,
                 articleId: form.articleId || undefined,
                 designation: form.designation.trim(),
-                quantite: qtyPerClient,
+                quantite: qtyForThis,
                 unite: form.unite.trim() || undefined,
                 prixUnitaire: form.prixUnitaireFournisseur,
                 montant:
-                  qtyPerClient != null && form.prixUnitaireFournisseur != null
-                    ? Math.round(qtyPerClient * form.prixUnitaireFournisseur)
+                  qtyForThis != null && form.prixUnitaireFournisseur != null
+                    ? Math.round(qtyForThis * form.prixUnitaireFournisseur)
                     : form.montantBon != null && form.clientIds.length === 1
                       ? form.montantBon
                       : undefined,
@@ -543,7 +549,7 @@ export default function Chargements() {
               });
               assignments.push({
                 clientOrderId: order.id,
-                quantiteAffectee: qtyPerClient,
+                quantiteAffectee: qtyForThis,
               });
             }
             await setSupplierLoadingAssignments(created.id, assignments);
