@@ -513,42 +513,49 @@ export default function Chargements() {
         });
 
         if (form.clientIds.length > 0) {
-          const qtyPerClient =
-            form.quantite != null && form.quantite > 0
-              ? Math.floor(form.quantite / form.clientIds.length)
-              : undefined;
-          const assignments: SupplierLoadingAssignmentPayload[] = [];
-          for (const clientId of form.clientIds) {
-            const clientTp = clients.find((c) => c.id === clientId);
-            const clientFields = buildOrderClientFields(false, clientId, clientTp?.nom || '');
-            const order = await createClientOrder({
-              ...clientFields,
-              articleId: form.articleId || undefined,
-              designation: form.designation.trim(),
-              quantite: qtyPerClient,
-              unite: form.unite.trim() || undefined,
-              prixUnitaire: form.prixUnitaireFournisseur,
-              montant:
-                qtyPerClient != null && form.prixUnitaireFournisseur != null
-                  ? Math.round(qtyPerClient * form.prixUnitaireFournisseur)
-                  : form.montantBon != null && form.clientIds.length === 1
-                    ? form.montantBon
-                    : undefined,
-              statut: 'confirmee',
-              dateCommande: form.dateChargement,
-              notes: form.numeroBon
-                ? `Affectation directe — bon ${form.numeroBon.trim()}`
-                : 'Affectation directe à la création du bon',
-            });
-            assignments.push({
-              clientOrderId: order.id,
-              quantiteAffectee: qtyPerClient,
-            });
+          try {
+            const qtyPerClient =
+              form.quantite != null && form.quantite > 0
+                ? Math.floor(form.quantite / form.clientIds.length)
+                : undefined;
+            const assignments: SupplierLoadingAssignmentPayload[] = [];
+            for (const clientId of form.clientIds) {
+              const clientTp = clients.find((c) => c.id === clientId);
+              const clientFields = buildOrderClientFields(false, clientId, clientTp?.nom || '');
+              const order = await createClientOrder({
+                ...clientFields,
+                articleId: form.articleId || undefined,
+                designation: form.designation.trim(),
+                quantite: qtyPerClient,
+                unite: form.unite.trim() || undefined,
+                prixUnitaire: form.prixUnitaireFournisseur,
+                montant:
+                  qtyPerClient != null && form.prixUnitaireFournisseur != null
+                    ? Math.round(qtyPerClient * form.prixUnitaireFournisseur)
+                    : form.montantBon != null && form.clientIds.length === 1
+                      ? form.montantBon
+                      : undefined,
+                statut: 'confirmee',
+                dateCommande: form.dateChargement,
+                notes: form.numeroBon
+                  ? `Affectation directe — bon ${form.numeroBon.trim()}`
+                  : 'Affectation directe à la création du bon',
+              });
+              assignments.push({
+                clientOrderId: order.id,
+                quantiteAffectee: qtyPerClient,
+              });
+            }
+            await setSupplierLoadingAssignments(created.id, assignments);
+            toast.success(
+              `Bon créé et attribué à ${form.clientIds.length} client${form.clientIds.length > 1 ? 's' : ''}.`,
+            );
+          } catch (err) {
+            console.error('Attribution client échouée:', err);
+            toast.error(
+              `Bon créé mais l'attribution client a échoué : ${err instanceof Error ? err.message : String(err)}`,
+            );
           }
-          await setSupplierLoadingAssignments(created.id, assignments);
-          toast.success(
-            `Bon créé et attribué à ${form.clientIds.length} client${form.clientIds.length > 1 ? 's' : ''}.`,
-          );
         } else {
           toast.success('Bon de chargement créé.');
         }
