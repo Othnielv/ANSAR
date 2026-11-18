@@ -16,6 +16,7 @@ import {
   validateLoadingAssignmentRows,
   loadingAllowsTransportTruck,
   loadingTransportTruckRequired,
+  splitQuantityAmongClients,
 } from '@/lib/supplier-loadings';
 import {
   HUB_PRESETS,
@@ -172,6 +173,7 @@ export default function Chargements() {
     setSupplierLoadingAssignments,
     createClientOrder,
     updateClientOrder,
+    deleteClientOrder,
   } = useApp();
   const { isSubmitting, withGuard } = useSubmitGuard();
 
@@ -437,6 +439,7 @@ export default function Chargements() {
       lieu: l.lieu ?? '',
       notes: l.notes ?? '',
       statut: l.statut,
+      clientIds: [],
     });
     setDialogOpen(true);
   };
@@ -513,19 +516,16 @@ export default function Chargements() {
         });
 
         if (form.clientIds.length > 0) {
+          const createdOrderIds: string[] = [];
           try {
             const totalQty =
               form.quantite != null && form.quantite > 0 ? form.quantite : null;
+            const shares =
+              totalQty != null ? splitQuantityAmongClients(totalQty, form.clientIds.length) : null;
             const assignments: SupplierLoadingAssignmentPayload[] = [];
             for (let i = 0; i < form.clientIds.length; i++) {
               const clientId = form.clientIds[i];
-              let qtyForThis: number | undefined;
-              if (totalQty != null) {
-                const base = Math.floor(totalQty / form.clientIds.length);
-                const remainder = totalQty - base * form.clientIds.length;
-                qtyForThis = i < remainder ? base + 1 : base;
-                if (qtyForThis <= 0) qtyForThis = 1;
-              }
+              const qtyForThis: number | undefined = shares ? shares[i] : undefined;
               const clientTp = clients.find((c) => c.id === clientId);
               const clientFields = buildOrderClientFields(false, clientId, clientTp?.nom || '');
               const order = await createClientOrder({
@@ -547,6 +547,7 @@ export default function Chargements() {
                   ? `Affectation directe — bon ${form.numeroBon.trim()}`
                   : 'Affectation directe à la création du bon',
               });
+              createdOrderIds.push(order.id);
               assignments.push({
                 clientOrderId: order.id,
                 quantiteAffectee: qtyForThis,
@@ -558,6 +559,14 @@ export default function Chargements() {
             );
           } catch (err) {
             console.error('Attribution client échouée:', err);
+            // Ne pas laisser de commandes orphelines (non liées au bon).
+            for (const orderId of createdOrderIds) {
+              try {
+                await deleteClientOrder(orderId);
+              } catch (cleanupErr) {
+                console.error('Nettoyage commande orpheline échoué:', cleanupErr);
+              }
+            }
             toast.error(
               `Bon créé mais l'attribution client a échoué : ${err instanceof Error ? err.message : String(err)}`,
             );

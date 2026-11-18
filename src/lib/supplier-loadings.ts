@@ -244,3 +244,18 @@ export function formatSupplierLoadingBonOption(l: {
       : '';
   return `${head}${l.designation}${date}${qty}${rest} — ${formatSupplierLoadingStatusFr(l.statut)}${four}${hub}`;
 }
+
+/**
+ * Répartit une quantité de bon entre `n` clients, au centième près.
+ * La somme des parts est exactement égale au total (jamais supérieure),
+ * y compris pour les quantités décimales (ex. 30,5 t) ou inférieures à n.
+ */
+export function splitQuantityAmongClients(total: number, n: number): number[] {
+  if (!(n > 0) || !Number.isFinite(total) || total <= 0) return [];
+  // Parts entières si possible (31 t / 3 → 11, 10, 10), sinon au centième.
+  const scale = Number.isInteger(total) && total >= n ? 1 : 100;
+  const units = Math.round(total * scale);
+  const base = Math.floor(units / n);
+  const remainder = units - base * n;
+  return Array.from({ length: n }, (_, i) => (base + (i < remainder ? 1 : 0)) / scale);
+}
