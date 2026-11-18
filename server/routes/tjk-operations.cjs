@@ -131,6 +131,122 @@ function validatePayload(body, partial) {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Attribution des clients au bon fournisseur lié (supplier loading)   */
+/* Chaque part client crée/maj une commande client liée au bon, repérée */
+/* par le marqueur [tjk:<opId>:<shareId>] dans ses notes.               */
+/* ------------------------------------------------------------------ */
+
+function tjkMarker(opId, shareId) {
+  return `[tjk:${opId}:${shareId}]`;
+}
+
+async function listTjkOrdersForOp(opId) {
+  const { rows } = await query(
+    `SELECT id, notes FROM client_orders WHERE notes LIKE $1`,
+    [`%[tjk:${opId}:%`],
+  );
+  return rows.map((r) => {
+    const m = String(r.notes || '').match(/\[tjk:[^:\]]+:([^\]]+)\]/);
+    return { id: r.id, shareId: m ? m[1] : null };
+  });
+}
+
+async function removeTjkOrder(orderId, actor) {
+  const clientOps = require('./client-ops.cjs');
+  // Facture non payée générée automatiquement : supprimée avec la commande.
+  await query(
+    `DELETE FROM invoices WHERE "clientOrderId" = $1 AND COALESCE("montantPaye", 0) <= 0`,
+    [orderId],
+  );
+  await clientOps.deleteOrder(orderId, actor);
+}
+
+/**
+ * Aligne les attributions du bon `loadingId` sur les parts de l'opération TJK.
+ * `shares` vide / loadingId nul → retire les attributions de cette opération.
+ */
+async function syncTjkLoadingAssignments(op, actor, previousLoadingId) {
+  const clientOps = require('./client-ops.cjs');
+  const loadings = require('./loadings.cjs');
+  const opId = op.id;
+  const loadingId = op.supplierLoadingId || null;
+  const shares = Array.isArray(op.clientShares) && op.clientShares.length
+    ? op.clientShares
+    : op.clientId || op.clientNom
+      ? [{ id: 'main', clientId: op.clientId || null, clientNom: op.clientNom || null, quantite: num(op.quantite), montant: op.prixTrans != null ? num(op.prixTrans) : null }]
+      : [];
+
+  const existing = await listTjkOrdersForOp(opId);
+  const existingOrderIds = new Set(existing.map((e) => e.id));
+
+  // Bon précédent différent : on y retire les attributions de cette opération.
+  if (previousLoadingId && previousLoadingId !== loadingId) {
+    const prevBon = await loadings.getLoading(previousLoadingId);
+    if (prevBon && prevBon.statut !== 'annule') {
+      const kept = (prevBon.assignments || []).filter((a) => !existingOrderIds.has(a.clientOrderId));
+      await loadings.setAssignments(previousLoadingId, { assignments: kept.map(toPayload) }, actor);
+    }
+  }
+
+  if (!loadingId) {
+    for (const e of existing) await removeTjkOrder(e.id, actor);
+    return;
+  }
+  const bon = await loadings.getLoading(loadingId);
+  if (!bon) throw HttpError(400, 'Bon TJK introuvable.');
+  if (bon.statut === 'annule') throw HttpError(400, 'Le bon TJK lié est annulé.');
+
+  const byShare = new Map(existing.filter((e) => e.shareId).map((e) => [e.shareId, e.id]));
+  const ownOrderIds = [];
+  const ownAssignments = [];
+  const designation = bon.designation || op.qualite || 'TJK';
+  for (const s of shares) {
+    const quantite = s.quantite != null ? num(s.quantite) : null;
+    const fields = {
+      ...(s.clientId ? { clientId: s.clientId } : { clientNom: s.clientNom || 'Client' }),
+      designation,
+      articleId: bon.articleId || undefined,
+      quantite: quantite ?? undefined,
+      unite: bon.unite || op.unite || undefined,
+      montant: s.montant != null ? num(s.montant) : undefined,
+      destination: op.destination || undefined,
+      statut: 'confirmee',
+      dateCommande: op.date,
+      notes: `TJK — bon ${bon.numeroBon || ''} ${tjkMarker(opId, s.id)}`.trim(),
+    };
+    let orderId = byShare.get(String(s.id));
+    if (orderId) {
+      await clientOps.updateOrder(orderId, fields, actor);
+      byShare.delete(String(s.id));
+    } else {
+      const order = await clientOps.createOrder(fields, actor);
+      orderId = order.id;
+    }
+    ownOrderIds.push(orderId);
+    ownAssignments.push({ clientOrderId: orderId, quantiteAffectee: quantite ?? undefined });
+  }
+
+  // Parts supprimées : retirer leurs commandes du bon puis les supprimer.
+  const removed = [...byShare.values(), ...existing.filter((e) => !e.shareId).map((e) => e.id)];
+  const ownSet = new Set([...ownOrderIds, ...existingOrderIds]);
+  const others = (bon.assignments || []).filter((a) => !ownSet.has(a.clientOrderId));
+  await loadings.setAssignments(
+    loadingId,
+    { assignments: [...others.map(toPayload), ...ownAssignments] },
+    actor,
+  );
+  for (const orderId of removed) await removeTjkOrder(orderId, actor);
+}
+
+function toPayload(a) {
+  return {
+    clientOrderId: a.clientOrderId,
+    quantiteAffectee: a.quantiteAffectee != null ? num(a.quantiteAffectee) : undefined,
+    notes: a.notes || undefined,
+  };
+}
+
 async function listOperations() {
   await ensureSchema();
   const { rows } = await query(
@@ -195,6 +311,20 @@ async function createOperation(body, actor) {
   );
 
   const row = await getOperation(id);
+  try {
+    await syncTjkLoadingAssignments(row, actor, null);
+  } catch (err) {
+    // Pas d'opération à moitié enregistrée : on annule la création.
+    try {
+      const own = await listTjkOrdersForOp(id);
+      for (const o of own) await removeTjkOrder(o.id, actor);
+    } catch (cleanupErr) {
+      console.error('[tjk] nettoyage après échec', cleanupErr);
+    }
+    await query(`DELETE FROM ${TABLE} WHERE id = $1`, [id]);
+    const msg = err instanceof Error ? err.message : String(err);
+    throw HttpError(err && err.statusCode ? err.statusCode : 400, `Attribution du bon impossible : ${msg}`);
+  }
   await audit(MODULE, 'CREATE', id, 'Opération TJK', null, row, actor);
   return row;
 }
@@ -321,6 +451,12 @@ async function updateOperation(id, body, actor) {
   );
 
   const row = await getOperation(id);
+  try {
+    await syncTjkLoadingAssignments(row, actor, prev.supplierLoadingId || null);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw HttpError(err && err.statusCode ? err.statusCode : 400, `Opération enregistrée mais attribution du bon impossible : ${msg}`);
+  }
   await audit(MODULE, 'UPDATE', id, 'Opération TJK', prev, row, actor);
   return row;
 }
@@ -329,6 +465,11 @@ async function deleteOperation(id, actor) {
   await ensureSchema();
   const prev = await getOperation(id);
   if (!prev) throw HttpError(404, 'Opération introuvable.');
+  await syncTjkLoadingAssignments(
+    { ...prev, supplierLoadingId: null, clientShares: [], clientId: null, clientNom: null },
+    actor,
+    prev.supplierLoadingId || null,
+  );
   await query(`DELETE FROM ${TABLE} WHERE id = $1`, [id]);
   await audit(MODULE, 'DELETE', id, 'Opération TJK', prev, null, actor);
 }
