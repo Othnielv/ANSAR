@@ -270,10 +270,17 @@ export default function Chargements() {
     if (filterStatut !== 'all') {
       list = list.filter((l) => l.statut === filterStatut);
     } else {
-      // Par défaut : les bons terminés (affectés / soldés / annulés / épuisés) disparaissent.
-      list = list.filter(
-        (l) => !isLoadingFinished(l.statut, l.quantite, l.assignments),
-      );
+      // Par défaut : les annulés sont masqués. Les bons terminés (affectés / soldés)
+      // restent visibles s'ils sont récents (7 jours) ou si une recherche est saisie,
+      // pour qu'un bon attribué à la création ne « disparaisse » pas aussitôt.
+      const recentCutoff = new Date(Date.now() - 7 * 86_400_000).toISOString().split('T')[0];
+      list = list.filter((l) => {
+        if (l.statut === 'annule') return false;
+        if (!isLoadingFinished(l.statut, l.quantite, l.assignments)) return true;
+        if (q) return true;
+        const d = (l.dateChargement || '').split('T')[0];
+        return Boolean(d) && d >= recentCutoff;
+      });
     }
     if (unassignedOnly) {
       list = list.filter((l) =>
@@ -1601,7 +1608,7 @@ export default function Chargements() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">En cours (masque terminés)</SelectItem>
+                  <SelectItem value="all">En cours + terminés récents</SelectItem>
                   {SUPPLIER_LOADING_STATUS_OPTIONS.map((s) => (
                     <SelectItem key={s} value={s}>
                       {formatSupplierLoadingStatusFr(s)}
