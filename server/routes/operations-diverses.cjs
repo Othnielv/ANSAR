@@ -7,7 +7,7 @@ const MODULE = 'operations-diverses';
 
 const VALID_PARTIES = [
   'Yassa', 'Afb', 'CCA', 'SGC', 'Top Mobile',
-  'Crédit du Sahel', 'Shop Account',
+  'Crédit du Sahel', 'Subaccount',
 ];
 const VALID_TYPES = ['entree', 'sortie'];
 
