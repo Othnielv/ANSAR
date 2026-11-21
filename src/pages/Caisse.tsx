@@ -91,13 +91,16 @@ function isCashMode(mode: string | undefined): boolean {
 function guessOdPartie(mode: string | undefined): OdPartie {
   const norm = normalizePaymentMode(mode) || '';
   const low = norm.toLowerCase();
-  if (low.includes('mtn') && low.includes('shop')) return 'Yassa';
-  if (low.includes('mtn')) return 'Top Mobile';
-  if (low.includes('orange')) return 'Yassa';
-  if (low.includes('sub account')) return 'Subaccount';
-  if (low.includes('spectrum')) return 'SGC';
-  if (low.includes('top mobil')) return 'Top Mobile';
-  if (low.includes('virement') || low.includes('versement')) return 'Afb';
+  if (low.includes('mtn') && low.includes('shop')) return 'MTN Shop';
+  if (low.includes('mtn')) return 'MTN Mobile Money';
+  if (low.includes('orange')) return 'Orange Money';
+  if (low.includes('sub account')) return 'Sub Account';
+  if (low.includes('spectrum')) return 'Spectrum';
+  if (low.includes('top mobil')) return 'Top Mobil';
+  if (low.includes('chèque') || low.includes('cheque')) return 'Chèque';
+  const banque = parseAnsarBanque(mode);
+  if (banque) return banque as OdPartie;
+  if (low.includes('virement') || low.includes('versement')) return 'Afriland';
   return OD_PARTIES[0];
 }
 

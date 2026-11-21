@@ -6,13 +6,23 @@
 import { operationsDiversesApi, type OperationDiversePayload } from '@/lib/api';
 
 export const OD_PARTIES = [
-  'Yassa',
-  'Afb',
+  'MTN Mobile Money',
+  'Orange Money',
+  'Sub Account',
+  'Spectrum',
+  'Top Mobil',
+  'MTN Shop',
+  'Chèque',
+  'Afriland',
+  'CBC',
+  'UBA',
   'CCA',
-  'SGC',
-  'Top Mobile',
+  'Access Bank',
+  'BGFI',
   'Crédit du Sahel',
-  'Subaccount',
+  'Express Exchange',
+  'SGC',
+  'SCB',
 ] as const;
 
 export type OdPartie = (typeof OD_PARTIES)[number];

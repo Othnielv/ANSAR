@@ -42,13 +42,23 @@ function isRemote(): boolean {
 }
 
 const PARTIE_COLORS: Record<OdPartie, string> = {
-  Yassa: 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30',
-  Afb: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+  'MTN Mobile Money': 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+  'Orange Money': 'bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30',
+  'Sub Account': 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 border-cyan-500/30',
+  Spectrum: 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30',
+  'Top Mobil': 'bg-pink-500/15 text-pink-700 dark:text-pink-400 border-pink-500/30',
+  'MTN Shop': 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+  'Chèque': 'bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30',
+  Afriland: 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30',
+  CBC: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+  UBA: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
   CCA: 'bg-violet-500/15 text-violet-700 dark:text-violet-400 border-violet-500/30',
-  SGC: 'bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30',
-  'Top Mobile': 'bg-pink-500/15 text-pink-700 dark:text-pink-400 border-pink-500/30',
-  'Crédit du Sahel': 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
-  Subaccount: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 border-cyan-500/30',
+  'Access Bank': 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border-indigo-500/30',
+  BGFI: 'bg-teal-500/15 text-teal-700 dark:text-teal-400 border-teal-500/30',
+  'Crédit du Sahel': 'bg-lime-500/15 text-lime-700 dark:text-lime-400 border-lime-500/30',
+  'Express Exchange': 'bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-400 border-fuchsia-500/30',
+  SGC: 'bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/30',
+  SCB: 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30',
 };
 
 type DialogMode = 'operation' | 'retrait' | 'depot';
@@ -621,13 +631,13 @@ export default function OperationsDiverses() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Comptes actifs
+              Comptes
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{OD_PARTIES.length}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {OD_PARTIES.join(', ')}
+              Mobile, banques, ch{'è'}que
             </p>
           </CardContent>
         </Card>
@@ -639,7 +649,7 @@ export default function OperationsDiverses() {
           <CardTitle className="text-base">Soldes par compte</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             {OD_PARTIES.map((p) => {
               const solde = soldesByPartie[p];
               return (
