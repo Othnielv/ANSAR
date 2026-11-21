@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Search, Shuffle, TrendingUp, TrendingDown, Loader2, Heart, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Shuffle, TrendingUp, TrendingDown, Loader2, Heart, ArrowDownToLine, ArrowUpFromLine, FileDown, FileText } from 'lucide-react';
 import { useSubmitGuard } from '@/hooks/useSubmitGuard';
 import { toast } from 'sonner';
 import PageHeader from '@/components/PageHeader';
@@ -35,7 +35,9 @@ import {
   type CaisseTransaction,
   saveCaisseTransactionRemote,
   getCaisseTransactions,
+  refreshCaisseFromApi,
 } from '@/lib/caisse-local';
+import { exportToExcel, exportToPrintablePDF, type ExportTotal } from '@/lib/export-utils';
 
 function isRemote(): boolean {
   return Boolean(import.meta.env.VITE_API_URL?.trim());
@@ -146,6 +148,67 @@ export default function OperationsDiverses() {
       totalSorties: sorties.reduce((s, o) => s + o.montant, 0),
     };
   }, [filteredOps]);
+
+  const pdfTotals: ExportTotal[] = useMemo(() => [
+    {
+      label: 'Solde global OD',
+      value: `${totalSolde >= 0 ? '+' : '−'}${Math.abs(totalSolde).toLocaleString('fr-FR')} FCFA`,
+      style: totalSolde >= 0 ? 'positive' : 'negative',
+    },
+    {
+      label: 'Entrées',
+      value: `+${filteredStats.totalEntrees.toLocaleString('fr-FR')} FCFA`,
+      style: 'positive',
+    },
+    {
+      label: 'Sorties',
+      value: `−${filteredStats.totalSorties.toLocaleString('fr-FR')} FCFA`,
+      style: 'negative',
+    },
+  ], [totalSolde, filteredStats]);
+
+  const handleExportExcel = () => {
+    exportToExcel({
+      title: `Opérations Diverses${activePartie !== 'all' ? ` — ${activePartie}` : ''}`,
+      fileName: `od_${new Date().toISOString().split('T')[0]}.xlsx`,
+      columns: [
+        { header: 'Date', value: (o) => new Date(o.date).toLocaleDateString('fr-FR') },
+        { header: 'Compte', value: (o) => o.partie },
+        { header: 'Type', value: (o) => (o.type === 'entree' ? 'Entrée' : 'Sortie') },
+        { header: 'Entrée (FCFA)', value: (o) => (o.type === 'entree' ? o.montant : '') },
+        { header: 'Sortie (FCFA)', value: (o) => (o.type === 'sortie' ? o.montant : '') },
+        { header: 'Description', value: (o) => o.description },
+        { header: 'Client', value: (o) => resolveClientName(o.clientTierId) || '—' },
+        { header: 'Mode', value: (o) => o.modePaiement || '—' },
+        { header: 'Référence', value: (o) => o.reference || '—' },
+      ],
+      rows: filteredOps,
+    });
+  };
+
+  const handleExportPDF = () => {
+    exportToPrintablePDF({
+      title: `Opérations Diverses${activePartie !== 'all' ? ` — ${activePartie}` : ''}`,
+      fileName: `od_${new Date().toISOString().split('T')[0]}.pdf`,
+      headerColor: '#4f46e5',
+      headerTextColor: '#ffffff',
+      evenRowColor: '#eef2ff',
+      oddRowColor: '#ffffff',
+      accentColor: '#4f46e5',
+      totals: pdfTotals,
+      columns: [
+        { header: 'Date', value: (o) => new Date(o.date).toLocaleDateString('fr-FR') },
+        { header: 'Compte', value: (o) => o.partie },
+        { header: 'Type', value: (o) => (o.type === 'entree' ? 'Entrée' : 'Sortie'), cellStyle: (o) => (o.type === 'entree' ? 'positive' : 'negative') },
+        { header: 'Entrée (FCFA)', value: (o) => (o.type === 'entree' ? `+${o.montant.toLocaleString('fr-FR')}` : '—'), cellStyle: (o) => (o.type === 'entree' ? 'positive' : undefined) },
+        { header: 'Sortie (FCFA)', value: (o) => (o.type === 'sortie' ? `−${o.montant.toLocaleString('fr-FR')}` : '—'), cellStyle: (o) => (o.type === 'sortie' ? 'negative' : undefined) },
+        { header: 'Description', value: (o) => o.description },
+        { header: 'Client', value: (o) => resolveClientName(o.clientTierId) || '—' },
+        { header: 'Mode', value: (o) => o.modePaiement || '—' },
+      ],
+      rows: filteredOps,
+    });
+  };
 
   const resetForm = () => {
     setFormData({
@@ -291,11 +354,25 @@ export default function OperationsDiverses() {
         const newOp: OperationDiverse = { id: crypto.randomUUID(), ...base };
         if (isRemote()) {
           await saveOperationDiverseRemote(newOp);
+          const caisseMirror: CaisseTransaction = {
+            id: Date.now().toString(),
+            type: newOp.type,
+            montant: newOp.montant,
+            date: newOp.date,
+            description: `[OD ${newOp.partie}] ${newOp.description}`,
+            utilisateur: newOp.utilisateur,
+            modePaiement: 'Espèces',
+            reference: `od-linked:${newOp.id}`,
+            clientTierId: newOp.clientTierId,
+            exclutRevenu: newOp.exclutRevenu,
+          };
+          await saveCaisseTransactionRemote(caisseMirror, true);
+          await refreshCaisseFromApi();
           setOperations(getOperationsDiverses());
         } else {
           setOperations(addOperationDiverseLocal(newOp));
         }
-        toast.success('Operation ajoutee.');
+        toast.success('Operation ajoutee (+ caisse mise à jour).');
       }
       setIsDialogOpen(false);
       resetForm();
@@ -350,8 +427,17 @@ export default function OperationsDiverses() {
         icon={Shuffle}
         gradient="from-indigo-500/20 via-purple-500/10 to-transparent"
         actions={
-          canManageTreasury ? (
-            <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={handleExportExcel} className="gap-1.5">
+              <FileDown className="h-4 w-4" />
+              Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportPDF} className="gap-1.5">
+              <FileText className="h-4 w-4" />
+              PDF
+            </Button>
+            {canManageTreasury && (
+              <>
 <Button variant="outline" size="sm" onClick={() => openDialog('retrait')}>
                 <ArrowDownToLine className="mr-2 h-4 w-4" />
                 Retrait vers caisse
@@ -364,8 +450,9 @@ export default function OperationsDiverses() {
                 <Plus className="mr-2 h-4 w-4" />
                 Nouvelle op{'é'}ration
               </Button>
-            </div>
-          ) : undefined
+              </>
+            )}
+          </div>
         }
       />
 
