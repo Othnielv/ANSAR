@@ -250,17 +250,17 @@ export default function Camrail() {
   );
 
   const transporteurOptions = useMemo(() => {
-    const fromFournisseurs = thirdParties
-      .filter((tp) => tp.type === 'fournisseur')
+    const fromTransporteurs = thirdParties
+      .filter((tp) => tp.type === 'transporteur')
       .map((tp) => tp.nom);
     const fromOps = operations.map((op) => op.transporteur);
-    return uniqueSortedStrings([...fromFournisseurs, ...fromOps]);
+    return uniqueSortedStrings([...fromTransporteurs, ...fromOps]);
   }, [thirdParties, operations]);
 
   const transporteurFournisseurs = useMemo(
     () =>
       stableSort(
-        thirdParties.filter((tp) => tp.type === 'fournisseur' && tp.nom.trim()),
+        thirdParties.filter((tp) => tp.type === 'transporteur' && tp.nom.trim()),
         (a, b) => frCollator.compare(a.nom, b.nom),
       ),
     [thirdParties],
@@ -274,7 +274,7 @@ export default function Camrail() {
       return;
     }
     try {
-      await createThirdParty({ nom: name, type: 'fournisseur' });
+      await createThirdParty({ nom: name, type: 'transporteur' });
       setNewTransporteurName('');
       toast.success(`Transporteur "${name}" cree.`);
     } catch (err) {

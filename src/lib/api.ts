@@ -228,7 +228,7 @@ export interface ThirdPartyPayload {
   telephone?: string;
   email?: string;
   adresse?: string;
-  type: 'proprietaire' | 'client' | 'fournisseur' | 'employe';
+  type: 'proprietaire' | 'client' | 'fournisseur' | 'employe' | 'transporteur';
   notes?: string;
   plafondCredit?: number | null;
   sexe?: 'homme' | 'femme' | 'autre' | null;

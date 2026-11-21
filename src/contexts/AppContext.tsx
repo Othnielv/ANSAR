@@ -198,7 +198,7 @@ export interface Driver {
   transactions: DriverTransaction[];
 }
 
-export type ThirdPartyType = 'proprietaire' | 'client' | 'fournisseur' | 'employe';
+export type ThirdPartyType = 'proprietaire' | 'client' | 'fournisseur' | 'employe' | 'transporteur';
 
 export type ClientSexe = 'homme' | 'femme' | 'autre';
 export type ClientSegment = 'particulier' | 'professionnel' | 'gros_compte' | 'institution';
