@@ -6,10 +6,11 @@ const TABLE = 'operations_diverses';
 const MODULE = 'operations-diverses';
 
 const VALID_PARTIES = [
+  'Yassa', 'Afb', 'CCA', 'SGC', 'Top Mobile', 'Crédit du Sahel', 'Subaccount',
   'MTN Mobile Money', 'Orange Money', 'Sub Account', 'Spectrum',
   'Top Mobil', 'MTN Shop', 'Chèque',
-  'Afriland', 'CBC', 'UBA', 'CCA', 'Access Bank', 'BGFI',
-  'Crédit du Sahel', 'Express Exchange', 'SGC', 'SCB',
+  'Afriland', 'CBC', 'UBA', 'Access Bank', 'BGFI',
+  'Express Exchange', 'SCB',
 ];
 const VALID_TYPES = ['entree', 'sortie'];
 
