@@ -167,12 +167,6 @@ export function computeOdSoldeByPartie(ops: OperationDiverse[]): Record<OdPartie
   return soldes;
 }
 
-export async function migrateCaisseToOd(): Promise<{ migrated: number; message: string }> {
-  const result = await operationsDiversesApi.migrateCaisseToOd();
-  if (result.migrated > 0) await refreshOdFromApi();
-  return result;
-}
-
 export function computeOdTotalSolde(ops: OperationDiverse[]): number {
   let total = 0;
   for (const op of ops) {

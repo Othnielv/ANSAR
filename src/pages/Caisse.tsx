@@ -747,6 +747,8 @@ export default function Caisse() {
   };
 
   const filteredTransactions = transactions.filter((t) => {
+    if (!isCashMode(t.modePaiement)) return false;
+
     if (filterType === 'financement') {
       if (!isFinancementEntree(t)) return false;
     } else if (filterType !== 'all' && t.type !== filterType) {
