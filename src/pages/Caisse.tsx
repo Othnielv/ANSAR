@@ -65,6 +65,14 @@ import {
   type PaymentModeFamily,
 } from '@/lib/payment-modes';
 import { frCollator, parseDateMs, stableSort } from '@/lib/list-sort';
+import {
+  type OperationDiverse,
+  type OdPartie,
+  OD_PARTIES,
+  saveOperationDiverseRemote,
+  addOperationDiverseLocal,
+  refreshOdFromApi,
+} from '@/lib/operations-diverses';
 import { ListSortSelect } from '@/components/ListSortSelect';
 
 function tripCaisseLabel(trip: Trip): string {
@@ -72,6 +80,25 @@ function tripCaisseLabel(trip: Trip): string {
   const d = (trip.destination ?? '').trim();
   const route = d ? `${o} → ${d}` : `${o} → —`;
   return `${formatTripCode(trip)} · ${route}`;
+}
+
+function isCashMode(mode: string | undefined): boolean {
+  if (!mode?.trim()) return true;
+  const family = paymentModeFamily(mode);
+  return family === 'especes' || family === 'cheque' || family === '';
+}
+
+function guessOdPartie(mode: string | undefined): OdPartie {
+  const norm = normalizePaymentMode(mode) || '';
+  const low = norm.toLowerCase();
+  if (low.includes('mtn') && low.includes('shop')) return 'Yassa';
+  if (low.includes('mtn')) return 'Top Mobile';
+  if (low.includes('orange')) return 'Yassa';
+  if (low.includes('sub account')) return 'Subaccount';
+  if (low.includes('spectrum')) return 'SGC';
+  if (low.includes('top mobil')) return 'Top Mobile';
+  if (low.includes('virement') || low.includes('versement')) return 'Afb';
+  return OD_PARTIES[0];
 }
 
 const CAISSE_SORT_OPTIONS = [
@@ -459,6 +486,33 @@ export default function Caisse() {
         toast.error(err instanceof InsufficientCaisseError ? err.message : 'Solde caisse insuffisant.');
         return;
       }
+    }
+
+    if (!editingTransaction && !isCashMode(mode)) {
+      await withGuard(async () => {
+        const partie = guessOdPartie(mode);
+        const odOp: OperationDiverse = {
+          id: crypto.randomUUID(),
+          partie,
+          type: formData.type,
+          montant,
+          date: formData.date,
+          description: formData.description.trim(),
+          utilisateur: user?.login || 'system',
+          modePaiement: mode,
+          clientTierId: formData.clientTierId || undefined,
+          exclutRevenu: formData.type === 'entree' && formData.exclutRevenu ? true : undefined,
+        };
+        if (isRemoteCaisse()) {
+          await saveOperationDiverseRemote(odOp);
+        } else {
+          addOperationDiverseLocal(odOp);
+        }
+        toast.success(`Transaction non-espèces enregistrée dans Opérations Diverses (${partie}).`);
+        setIsDialogOpen(false);
+        resetForm();
+      });
+      return;
     }
 
     const categorie =
@@ -1124,6 +1178,14 @@ export default function Caisse() {
                       onChange={(mode) => setFormData((f) => ({ ...f, modePaiement: mode }))}
                       entreprises={fournisseurs}
                     />
+
+                    {!editingTransaction && !isCashMode(formData.modePaiement) && (
+                      <div className="rounded-lg border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/25 p-3">
+                        <p className="text-sm text-amber-800 dark:text-amber-300">
+                          {'⚠️'} Mode non-esp{'è'}ces d{'é'}tect{'é'} {'—'} cette transaction sera enregistr{'é'}e dans <strong>Op{'é'}rations Diverses</strong> ({guessOdPartie(formData.modePaiement)}), pas dans la caisse.
+                        </p>
+                      </div>
+                    )}
 
                     <div>
                       <Label htmlFor="date">Date *</Label>

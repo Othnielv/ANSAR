@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Search, Shuffle, TrendingUp, TrendingDown, Loader2, Heart } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Shuffle, TrendingUp, TrendingDown, Loader2, Heart, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { useSubmitGuard } from '@/hooks/useSubmitGuard';
 import { toast } from 'sonner';
 import PageHeader from '@/components/PageHeader';
@@ -31,6 +31,11 @@ import {
   computeOdSoldeByPartie,
   computeOdTotalSolde,
 } from '@/lib/operations-diverses';
+import {
+  type CaisseTransaction,
+  saveCaisseTransactionRemote,
+  getCaisseTransactions,
+} from '@/lib/caisse-local';
 
 function isRemote(): boolean {
   return Boolean(import.meta.env.VITE_API_URL?.trim());
@@ -46,12 +51,15 @@ const PARTIE_COLORS: Record<OdPartie, string> = {
   Subaccount: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 border-cyan-500/30',
 };
 
+type DialogMode = 'operation' | 'retrait' | 'depot';
+
 export default function OperationsDiverses() {
   const { canManageTreasury, user } = useAuth();
   const { thirdParties } = useApp();
   const [operations, setOperations] = useState<OperationDiverse[]>([]);
   const [activePartie, setActivePartie] = useState<'all' | OdPartie>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<DialogMode>('operation');
   const [editingOp, setEditingOp] = useState<OperationDiverse | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { isSubmitting, withGuard } = useSubmitGuard();
@@ -140,6 +148,12 @@ export default function OperationsDiverses() {
     setEditingOp(null);
   };
 
+  const openDialog = (mode: DialogMode) => {
+    resetForm();
+    setDialogMode(mode);
+    setIsDialogOpen(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const montant = Number(formData.montant);
@@ -147,13 +161,96 @@ export default function OperationsDiverses() {
       toast.error('Indique un montant valide.');
       return;
     }
-    if (!formData.description.trim()) {
+    if (dialogMode === 'operation' && !formData.description.trim()) {
       toast.error('Ajoute une description.');
       return;
     }
 
     withGuard(async () => {
       const utilisateur = user?.login || 'Systeme';
+      const today = formData.date;
+
+      if (dialogMode === 'retrait') {
+        const desc = formData.description.trim() || `Retrait ${formData.partie} vers caisse`;
+        const refId = crypto.randomUUID();
+
+        const odSortie: OperationDiverse = {
+          id: crypto.randomUUID(),
+          partie: formData.partie,
+          type: 'sortie',
+          montant,
+          date: today,
+          description: desc,
+          reference: `retrait-caisse:${refId}`,
+          utilisateur,
+          modePaiement: formData.modePaiement.trim() || undefined,
+        };
+
+        const caisseEntree: CaisseTransaction = {
+          id: Date.now().toString(),
+          type: 'entree',
+          montant,
+          date: today,
+          description: `Retrait OD (${formData.partie})${formData.description.trim() ? ' - ' + formData.description.trim() : ''}`,
+          utilisateur,
+          modePaiement: 'Espèces',
+          reference: `retrait-od:${refId}`,
+        };
+
+        if (isRemote()) {
+          await saveOperationDiverseRemote(odSortie);
+          await saveCaisseTransactionRemote(caisseEntree, true);
+          setOperations(getOperationsDiverses());
+        } else {
+          setOperations(addOperationDiverseLocal(odSortie));
+        }
+        toast.success(`Retrait de ${montant.toLocaleString('fr-FR')} FCFA vers caisse effectué.`);
+        setIsDialogOpen(false);
+        resetForm();
+        return;
+      }
+
+      if (dialogMode === 'depot') {
+        const desc = formData.description.trim() || `Dépôt caisse vers ${formData.partie}`;
+        const refId = crypto.randomUUID();
+
+        const odEntree: OperationDiverse = {
+          id: crypto.randomUUID(),
+          partie: formData.partie,
+          type: 'entree',
+          montant,
+          date: today,
+          description: desc,
+          reference: `depot-caisse:${refId}`,
+          utilisateur,
+          modePaiement: formData.modePaiement.trim() || undefined,
+        };
+
+        const caisseSortie: CaisseTransaction = {
+          id: Date.now().toString(),
+          type: 'sortie',
+          montant,
+          date: today,
+          description: `Dépôt vers OD (${formData.partie})${formData.description.trim() ? ' - ' + formData.description.trim() : ''}`,
+          utilisateur,
+          modePaiement: 'Espèces',
+          categorie: 'Retrait',
+          reference: `depot-od:${refId}`,
+        };
+
+        if (isRemote()) {
+          await saveOperationDiverseRemote(odEntree);
+          await saveCaisseTransactionRemote(caisseSortie, true);
+          setOperations(getOperationsDiverses());
+        } else {
+          setOperations(addOperationDiverseLocal(odEntree));
+        }
+        toast.success(`Dépôt de ${montant.toLocaleString('fr-FR')} FCFA vers ${formData.partie} effectué.`);
+        setIsDialogOpen(false);
+        resetForm();
+        return;
+      }
+
       const base: Omit<OperationDiverse, 'id'> = {
         partie: formData.partie,
         type: formData.type,
@@ -193,6 +290,7 @@ export default function OperationsDiverses() {
 
   const handleEdit = (op: OperationDiverse) => {
     setEditingOp(op);
+    setDialogMode('operation');
     setFormData({
       partie: op.partie,
       type: op.type,
@@ -225,192 +323,257 @@ export default function OperationsDiverses() {
     return thirdParties.find((tp) => tp.id === tierId)?.nom || null;
   };
 
+  const dialogTitle = dialogMode === 'retrait'
+    ? 'Retrait vers caisse'
+    : dialogMode === 'depot'
+      ? 'Dépôt depuis caisse'
+      : editingOp ? 'Modifier l’operation' : 'Nouvelle operation diverse';
+
   return (
     <div className="space-y-6 p-1">
       <PageHeader
-        title="Operations Diverses"
+        title="Opérations Diverses"
         icon={Shuffle}
         gradient="from-indigo-500/20 via-purple-500/10 to-transparent"
         actions={
           canManageTreasury ? (
-            <Dialog
-              open={isDialogOpen}
-              onOpenChange={(open) => {
-                setIsDialogOpen(open);
-                if (!open) resetForm();
-              }}
-            >
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nouvelle operation
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingOp ? 'Modifier l’operation' : 'Nouvelle operation diverse'}
-                  </DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Type *</Label>
-                      <Select
-                        value={formData.type}
-                        onValueChange={(v: 'entree' | 'sortie') => {
-                          setFormData({
-                            ...formData,
-                            type: v,
-                            exclutRevenu: false,
-                          });
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="entree">Entree</SelectItem>
-                          <SelectItem value="sortie">Sortie</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="od-montant">Montant (FCFA) *</Label>
-                      <Input
-                        id="od-montant"
-                        type="number"
-                        value={formData.montant || ''}
-                        onChange={(e) =>
-                          setFormData({ ...formData, montant: parseFloat(e.target.value) || 0 })
-                        }
-                        required
-                        min="0"
-                      />
-                    </div>
-                  </div>
-
-                  <PaymentModePicker
-                    id="od-mode-paiement"
-                    label="Mode de paiement (optionnel)"
-                    value={formData.modePaiement}
-                    onChange={(mode) => setFormData((f) => ({ ...f, modePaiement: mode }))}
-                    entreprises={fournisseurs}
-                    allowNone
-                  />
-
-                  <div>
-                    <Label>Partie *</Label>
-                    <Select
-                      value={formData.partie}
-                      onValueChange={(v) => setFormData({ ...formData, partie: v as OdPartie })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {OD_PARTIES.map((p) => (
-                          <SelectItem key={p} value={p}>
-                            {p}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="od-date">Date *</Label>
-                    <Input
-                      id="od-date"
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="od-description">Description *</Label>
-                    <Input
-                      id="od-description"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Client (optionnel)</Label>
-                    <ThirdPartyPicker
-                      className="mt-1"
-                      options={clients}
-                      value={formData.clientTierId}
-                      onValueChange={(clientTierId) =>
-                        setFormData((f) => ({ ...f, clientTierId }))
-                      }
-                      placeholder="Rattacher un client..."
-                      topChoices={[{ id: '', label: 'Aucun client' }]}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Recommande pour les versements clients. Distinct de l&#39;utilisateur qui saisit.
-                    </p>
-                  </div>
-
-                  {formData.type === 'entree' && (
-                    <div className="rounded-lg border border-violet-200/80 dark:border-violet-900/50 bg-violet-50/60 dark:bg-violet-950/25 p-3 space-y-2">
-                      <div className="flex items-start gap-2">
-                        <Checkbox
-                          id="od-exclut-revenu"
-                          checked={formData.exclutRevenu}
-                          onCheckedChange={(c) => {
-                            const on = c === true;
-                            setFormData((f) => ({
-                              ...f,
-                              exclutRevenu: on,
-                            }));
-                          }}
-                          className="mt-1"
-                        />
-                        <div className="space-y-1">
-                          <Label htmlFor="od-exclut-revenu" className="font-medium cursor-pointer flex items-center gap-1.5">
-                            <Heart className="h-3.5 w-3.5 text-violet-600" />
-                            Financement (hors encaissement / benefice)
-                          </Label>
-                          <p className="text-xs text-muted-foreground leading-snug">
-                            Le montant augmente le solde OD mais n&#39;entre pas dans l&#39;encaissement du tableau de bord.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setIsDialogOpen(false);
-                        resetForm();
-                      }}
-                    >
-                      Annuler
-                    </Button>
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : editingOp ? (
-                        'Modifier'
-                      ) : (
-                        'Ajouter'
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="outline" onClick={() => openDialog('retrait')}>
+                <ArrowDownToLine className="mr-2 h-4 w-4" />
+                Retrait vers caisse
+              </Button>
+              <Button variant="outline" onClick={() => openDialog('depot')}>
+                <ArrowUpFromLine className="mr-2 h-4 w-4" />
+                Dépôt depuis caisse
+              </Button>
+              <Button onClick={() => openDialog('operation')}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nouvelle opération
+              </Button>
+            </div>
           ) : undefined
         }
       />
+
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) resetForm();
+        }}
+      >
+        <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{dialogTitle}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {dialogMode === 'retrait' && (
+              <div className="rounded-lg border border-green-200/80 dark:border-green-900/50 bg-green-50/60 dark:bg-green-950/25 p-3">
+                <p className="text-sm text-green-800 dark:text-green-300">
+                  <ArrowDownToLine className="inline h-4 w-4 mr-1" />
+                  Retire de l&apos;argent d&apos;un compte OD et le transfère en espèces dans la caisse.
+                </p>
+              </div>
+            )}
+            {dialogMode === 'depot' && (
+              <div className="rounded-lg border border-blue-200/80 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-950/25 p-3">
+                <p className="text-sm text-blue-800 dark:text-blue-300">
+                  <ArrowUpFromLine className="inline h-4 w-4 mr-1" />
+                  Dépose des espèces de la caisse vers un compte OD.
+                </p>
+              </div>
+            )}
+
+            {dialogMode === 'operation' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>Type *</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(v: 'entree' | 'sortie') => {
+                      setFormData({
+                        ...formData,
+                        type: v,
+                        exclutRevenu: false,
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="entree">Entrée</SelectItem>
+                      <SelectItem value="sortie">Sortie</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="od-montant">Montant (FCFA) *</Label>
+                  <Input
+                    id="od-montant"
+                    type="number"
+                    value={formData.montant || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, montant: parseFloat(e.target.value) || 0 })
+                    }
+                    required
+                    min="0"
+                  />
+                </div>
+              </div>
+            )}
+
+            {(dialogMode === 'retrait' || dialogMode === 'depot') && (
+              <div>
+                <Label htmlFor="od-transfer-montant">Montant (FCFA) *</Label>
+                <Input
+                  id="od-transfer-montant"
+                  type="number"
+                  value={formData.montant || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, montant: parseFloat(e.target.value) || 0 })
+                  }
+                  required
+                  min="0"
+                />
+              </div>
+            )}
+
+            <div>
+              <Label>Compte (partie) *</Label>
+              <Select
+                value={formData.partie}
+                onValueChange={(v) => setFormData({ ...formData, partie: v as OdPartie })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {OD_PARTIES.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {dialogMode === 'operation' && (
+              <PaymentModePicker
+                id="od-mode-paiement"
+                label="Mode de paiement (optionnel)"
+                value={formData.modePaiement}
+                onChange={(mode) => setFormData((f) => ({ ...f, modePaiement: mode }))}
+                entreprises={fournisseurs}
+                allowNone
+              />
+            )}
+
+            <div>
+              <Label htmlFor="od-date">Date *</Label>
+              <Input
+                id="od-date"
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="od-description">
+                Description {dialogMode === 'operation' ? '*' : '(optionnel)'}
+              </Label>
+              <Input
+                id="od-description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                required={dialogMode === 'operation'}
+                placeholder={
+                  dialogMode === 'retrait' ? 'Ex: Retrait Orange Money'
+                  : dialogMode === 'depot' ? 'Ex: Dépôt vers MTN'
+                  : ''
+                }
+              />
+            </div>
+
+            {dialogMode === 'operation' && (
+              <>
+                <div>
+                  <Label>Client (optionnel)</Label>
+                  <ThirdPartyPicker
+                    className="mt-1"
+                    options={clients}
+                    value={formData.clientTierId}
+                    onValueChange={(clientTierId) =>
+                      setFormData((f) => ({ ...f, clientTierId }))
+                    }
+                    placeholder="Rattacher un client..."
+                    topChoices={[{ id: '', label: 'Aucun client' }]}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Recommandé pour les versements clients. Distinct de l&#39;utilisateur qui saisit.
+                  </p>
+                </div>
+
+                {formData.type === 'entree' && (
+                  <div className="rounded-lg border border-violet-200/80 dark:border-violet-900/50 bg-violet-50/60 dark:bg-violet-950/25 p-3 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        id="od-exclut-revenu"
+                        checked={formData.exclutRevenu}
+                        onCheckedChange={(c) => {
+                          const on = c === true;
+                          setFormData((f) => ({
+                            ...f,
+                            exclutRevenu: on,
+                          }));
+                        }}
+                        className="mt-1"
+                      />
+                      <div className="space-y-1">
+                        <Label htmlFor="od-exclut-revenu" className="font-medium cursor-pointer flex items-center gap-1.5">
+                          <Heart className="h-3.5 w-3.5 text-violet-600" />
+                          Financement (hors encaissement / bénéfice)
+                        </Label>
+                        <p className="text-xs text-muted-foreground leading-snug">
+                          Le montant augmente le solde OD mais n&#39;entre pas dans l&#39;encaissement du tableau de bord.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  resetForm();
+                }}
+              >
+                Annuler
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : dialogMode === 'retrait' ? (
+                  'Retirer vers caisse'
+                ) : dialogMode === 'depot' ? (
+                  'Déposer depuis caisse'
+                ) : editingOp ? (
+                  'Modifier'
+                ) : (
+                  'Ajouter'
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Solde global + par partie */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -433,7 +596,7 @@ export default function OperationsDiverses() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-green-600" />
-              Entrees{activePartie !== 'all' ? ` (${activePartie})` : ''}
+              Entrées{activePartie !== 'all' ? ` (${activePartie})` : ''}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -458,7 +621,7 @@ export default function OperationsDiverses() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Parties actives
+              Comptes actifs
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -473,7 +636,7 @@ export default function OperationsDiverses() {
       {/* Soldes par partie */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Soldes par partie</CardTitle>
+          <CardTitle className="text-base">Soldes par compte</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
@@ -511,8 +674,8 @@ export default function OperationsDiverses() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <CardTitle className="shrink-0">
               {activePartie !== 'all'
-                ? `Operations — ${activePartie}`
-                : 'Toutes les operations'}
+                ? `Opérations — ${activePartie}`
+                : 'Toutes les opérations'}
             </CardTitle>
             <div className="relative w-full lg:max-w-xs">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -545,7 +708,7 @@ export default function OperationsDiverses() {
             {filteredOps.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Shuffle className="mx-auto h-10 w-10 mb-3 opacity-30" />
-                <p className="text-sm">Aucune operation diverse trouvee.</p>
+                <p className="text-sm">Aucune opération diverse trouvée.</p>
               </div>
             ) : (
               <div className="overflow-x-auto -mx-6 px-6">
@@ -553,9 +716,9 @@ export default function OperationsDiverses() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
-                      <TableHead>Partie</TableHead>
+                      <TableHead>Compte</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead className="text-right">Entree</TableHead>
+                      <TableHead className="text-right">Entrée</TableHead>
                       <TableHead className="text-right">Sortie</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Client</TableHead>
@@ -579,7 +742,7 @@ export default function OperationsDiverses() {
                             variant={op.type === 'entree' ? 'default' : 'destructive'}
                             className="text-xs"
                           >
-                            {op.type === 'entree' ? 'Entree' : 'Sortie'}
+                            {op.type === 'entree' ? 'Entrée' : 'Sortie'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-green-600 font-medium">
