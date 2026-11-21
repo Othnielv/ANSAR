@@ -5,7 +5,7 @@
  * Aucun backend externe (pas de Koyeb).
  */
 const { json, noContent, parseBody, normalizePath, corsHeaders } = require('./http.cjs');
-const { HttpError, actorFrom } = require('./lib.cjs');
+const { HttpError, actorFrom, query } = require('./lib.cjs');
 const trucks = require('./routes/trucks.cjs');
 const caisse = require('./routes/caisse.cjs');
 const bank = require('./routes/bank.cjs');
