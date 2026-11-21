@@ -736,7 +736,7 @@ export default function Chargements() {
   const openReassign = (l: SupplierLoading) => {
     const active = activeAssignmentsOf(l);
     if (active.length === 0) {
-      toast.error('Ce bon n’est pas encore affecté. Utilisez « Affecter ».');
+      toast.error(`Ce bon n'est pas encore affecté. Utilisez « Affecter ».`);
       return;
     }
     setReassignLoading(l);
@@ -922,7 +922,7 @@ export default function Chargements() {
           assignedOnThisBon > 0 &&
           prevOrder.quantite > assignedOnThisBon + 1e-6
         ) {
-          // Commande plus large que ce bon : on détache seulement, sans l’annuler.
+          // Commande plus large que ce bon : on détache seulement, sans l'annuler.
           continue;
         }
         const noteLine = `Bon réaffecté à ${newClientName} le ${todayIso()}`;
@@ -932,12 +932,12 @@ export default function Chargements() {
         try {
           await updateClientOrder(prevId, { statut: 'annulee', notes });
         } catch {
-          // Le bon est déjà transféré ; l’annulation de l’ancienne commande est secondaire.
+          // Le bon est déjà transféré ; l'annulation de l'ancienne commande est secondaire.
         }
       }
 
       toast.success(
-        `Bon chez ${newClientName}. L’ancien client n’y a plus accès.`,
+        `Bon chez ${newClientName}. L'ancien client n'y a plus accès.`,
       );
       setReassignDialogOpen(false);
     });
@@ -964,7 +964,7 @@ export default function Chargements() {
     { header: 'Fournisseur', value: (l: SupplierLoading) => l.fournisseurNom ?? '—' },
     { header: 'N° bon', value: (l: SupplierLoading) => l.numeroBon || '—' },
     { header: 'Désignation', value: (l: SupplierLoading) => l.designation },
-    { header: 'Mode d’entrée', value: (l: SupplierLoading) => formatLoadingEntryModeFr(l.modeEntree) },
+    { header: `Mode d'entrée`, value: (l: SupplierLoading) => formatLoadingEntryModeFr(l.modeEntree) },
     { header: 'Camion SIA-ANSAR', value: (l: SupplierLoading) => l.camionId ? truckLabelById.get(l.camionId) ?? '—' : '—' },
     {
       header: 'Quantité',
@@ -1045,7 +1045,7 @@ export default function Chargements() {
       getDetailHeading: (l) =>
         `${l.numeroBon?.trim() || l.designation} — ${l.fournisseurNom ?? ''}`,
     });
-    toast.success('Export PDF — enregistrez via la fenêtre d’impression');
+    toast.success(`Export PDF — enregistrez via la fenêtre d'impression`);
   };
 
   const handlePrintBonReceipt = (l: SupplierLoading) => {
@@ -1186,7 +1186,7 @@ export default function Chargements() {
                     disabled={!form.fournisseurId}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={form.fournisseurId ? 'Choisir une désignation…' : 'Choisir d’abord un fournisseur'} />
+                      <SelectValue placeholder={form.fournisseurId ? 'Choisir une désignation…' : `Choisir d'abord un fournisseur`} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="_none">— Saisie libre —</SelectItem>
@@ -1314,7 +1314,7 @@ export default function Chargements() {
                   </Select>
                   {form.modeEntree === 'tjk' && (
                     <p className="text-xs text-muted-foreground">
-                      Ce bon sera ventilé depuis l’écran{' '}
+                      Ce bon sera ventilé depuis l'écran{' '}
                       <Link to="/tjk" className="underline underline-offset-2">
                         TJK
                       </Link>{' '}
@@ -1979,13 +1979,13 @@ export default function Chargements() {
                 <span>{assignLoading.fournisseurNom}</span>
                 {assignLoading.quantite != null && assignLoading.quantite > 0 && (
                   <>
-                    <span className="font-medium">{assignLoading.quantite} {assignLoading.unite ?? ‘’}</span>
+                    <span className="font-medium">{assignLoading.quantite} {assignLoading.unite ?? ''}</span>
                     {assignClients.length > 0 && (
                       <span>
                         Affecté : {assignSelectionTotal}
                         {assignRemainder != null && assignRemainder > 0 && (
                           <span className="text-amber-700 dark:text-amber-400">
-                            {‘ ‘}· Reste : {assignRemainder}
+                            {' '}· Reste : {assignRemainder}
                           </span>
                         )}
                       </span>
@@ -2005,7 +2005,7 @@ export default function Chargements() {
               {assignClients.length > 0 && (
                 <div className="border rounded-md divide-y">
                   {assignClients.map((ac) => {
-                    const nom = clientsById.get(ac.clientId) ?? ‘—‘;
+                    const nom = clientsById.get(ac.clientId) ?? '—';
                     return (
                       <div key={ac.clientId} className="flex items-center gap-3 p-3">
                         <div className="flex-1">
