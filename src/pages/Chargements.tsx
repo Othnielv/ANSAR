@@ -1980,86 +1980,66 @@ export default function Chargements() {
       </Dialog>
 
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Affecter le bon — {assignLoading?.designation}</DialogTitle>
           </DialogHeader>
           {assignLoading && (
             <div className="space-y-4">
-              <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
-                <p>
-                  <span className="text-muted-foreground">Fournisseur :</span>{' '}
-                  {assignLoading.fournisseurNom}
-                </p>
-                {assignLoading.quantite != null && assignLoading.quantite > 0 ? (
+              <div className="rounded-md border bg-muted/30 p-3 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span>{assignLoading.fournisseurNom}</span>
+                {assignLoading.quantite != null && assignLoading.quantite > 0 && (
                   <>
-                    <p>
-                      <span className="text-muted-foreground">Quantité bon :</span>{' '}
-                      {assignLoading.quantite} {assignLoading.unite ?? ''}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Sélection :</span>{' '}
-                      {assignSelectionTotal} affecté(s)
-                      {assignRemainder != null ? (
+                    <span className="font-medium">{assignLoading.quantite} {assignLoading.unite ?? ''}</span>
+                    <span>
+                      Affecté : {assignSelectionTotal}
+                      {assignRemainder != null && assignRemainder > 0 && (
                         <span className="text-amber-700 dark:text-amber-400">
-                          {' '}
-                          · Reste : {assignRemainder} {assignLoading.unite ?? ''}
+                          {' '}· Reste : {assignRemainder}
                         </span>
-                      ) : null}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Un même bon peut être réparti entre plusieurs clients. La somme des
-                      quantités ne peut pas dépasser la quantité du bon.
-                    </p>
+                      )}
+                    </span>
                   </>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Bon sans quantité définie : vous pouvez lier plusieurs commandes sans
-                    plafond numérique.
-                  </p>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label>Filtrer par client (optionnel)</Label>
-                <ThirdPartyPicker
-                  options={clients}
-                  value={assignClientId || ALL_CLIENTS_FILTER}
-                  onValueChange={(id) =>
-                    setAssignClientId(id === ALL_CLIENTS_FILTER ? '' : id)
-                  }
-                  placeholder="Tous les clients…"
-                  searchPlaceholder="Rechercher un client…"
-                  topChoices={[
-                    {
-                      id: ALL_CLIENTS_FILTER,
-                      label: 'Tous les clients',
-                      keywords: 'tous reset filtre',
-                    },
-                    {
-                      id: WALK_IN_CLIENT_FILTER,
-                      label: 'Clients comptoir',
-                      keywords: 'passager sans fiche comptoir',
-                    },
-                  ]}
-                  orphanLabel={
-                    assignClientId &&
-                    assignClientId !== WALK_IN_CLIENT_FILTER &&
-                    assignClientId.startsWith('comptoir:')
-                      ? getClientKeyLabel(assignClientId)
-                      : undefined
-                  }
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <ThirdPartyPicker
+                    options={clients}
+                    value={assignClientId || ALL_CLIENTS_FILTER}
+                    onValueChange={(id) =>
+                      setAssignClientId(id === ALL_CLIENTS_FILTER ? '' : id)
+                    }
+                    placeholder="Filtrer par client…"
+                    searchPlaceholder="Rechercher un client…"
+                    topChoices={[
+                      {
+                        id: ALL_CLIENTS_FILTER,
+                        label: 'Tous les clients',
+                        keywords: 'tous reset filtre',
+                      },
+                      {
+                        id: WALK_IN_CLIENT_FILTER,
+                        label: 'Clients comptoir',
+                        keywords: 'passager sans fiche comptoir',
+                      },
+                    ]}
+                    orphanLabel={
+                      assignClientId &&
+                      assignClientId !== WALK_IN_CLIENT_FILTER &&
+                      assignClientId.startsWith('comptoir:')
+                        ? getClientKeyLabel(assignClientId)
+                        : undefined
+                    }
+                  />
+                </div>
+                <Input
+                  className="flex-1"
+                  placeholder="Rechercher…"
+                  value={assignSearch}
+                  onChange={(e) => setAssignSearch(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">
-                  {assignClientId
-                    ? `${ordersForAssign.length} commande(s) — ${getClientKeyLabel(assignClientId)}`
-                    : `${ordersForAssign.length} commande(s) active(s) — tous clients`}
-                </p>
               </div>
-              <Input
-                placeholder="Filtrer par réf., désignation, client…"
-                value={assignSearch}
-                onChange={(e) => setAssignSearch(e.target.value)}
-              />
               <div className="border rounded-md max-h-[320px] overflow-y-auto divide-y">
                 {ordersForAssign.length === 0 ? (
                   <p className="p-4 text-sm text-center text-muted-foreground">
@@ -2080,14 +2060,12 @@ export default function Chargements() {
                         onCheckedChange={() => toggleOrderInAssign(o.id)}
                       />
                       <div className="flex-1 min-w-[180px]">
-                        <p className="font-medium text-sm">{o.designation}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {getOrderClientName(o)} ·{' '}
-                          {formatClientAccountKindFr(getClientAccountKind(o))} ·{' '}
-                          {formatClientOrderStatusFr(o.statut)} · {o.dateCommande}
-                          {o.reference ? ` · ${o.reference}` : ''}
-                          {o.quantite != null ? ` · cmd ${o.quantite}${o.unite ? ` ${o.unite}` : ''}` : ''}
-                        </p>
+                        <p className="font-medium text-sm">{getOrderClientName(o)}</p>
+                        {o.quantite != null && o.quantite > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            cmd {o.quantite}{o.unite ? ` ${o.unite}` : ''}
+                          </p>
+                        )}
                       </div>
                       {selected && assignLoading.quantite != null && assignLoading.quantite > 0 && (
                         <div className="w-32 space-y-1">
