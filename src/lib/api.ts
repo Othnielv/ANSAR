@@ -155,6 +155,10 @@ export interface TripPayload {
   quantiteChargee?: number;
   /** Retour bordereaux (ex. ok, en attente). */
   retourBordereaux?: string;
+  /** Numéro wagon Camrail. */
+  numeroWagon?: string;
+  /** Transporteur. */
+  transporteur?: string;
   statut: 'planifie' | 'en_cours' | 'termine' | 'annule';
   stops?: TripStopPayload[];
   clientParticipants?: TripClientParticipant[];

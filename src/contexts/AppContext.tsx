@@ -89,6 +89,8 @@ export interface Trip {
   destinataire?: string;
   quantiteChargee?: number;
   retourBordereaux?: string;
+  numeroWagon?: string;
+  transporteur?: string;
   statut: TripStatus;
   /** Arrêts : chargements chez les fournisseurs, livraisons chez les clients (optionnel côté API). */
   stops?: TripStop[];

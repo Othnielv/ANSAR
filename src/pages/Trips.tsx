@@ -49,6 +49,7 @@ import {
 } from '@/lib/trip-client-participants';
 import type { TripClientParticipant } from '@/lib/trip-client-participants';
 import { syncTripBonToClientAccounts } from '@/lib/trip-bon-client-sync';
+import { createCamrailOperation } from '@/lib/camrail-operations';
 import { formatTripCode } from '@/lib/trip-display';
 import {
   filterActivityNearDate,
@@ -312,6 +313,8 @@ export default function Trips() {
     destinataire: '',
     quantiteChargee: undefined as number | undefined,
     retourBordereaux: '',
+    numeroWagon: '',
+    transporteur: '',
     statut: 'planifie' as TripStatus,
     stops: [] as TripStop[],
     clientParticipants: [] as TripClientParticipant[],
@@ -401,6 +404,8 @@ export default function Trips() {
       destinataire: '',
       quantiteChargee: undefined,
       retourBordereaux: '',
+      numeroWagon: '',
+      transporteur: '',
       statut: 'planifie' as TripStatus,
       stops: [],
       clientParticipants: [],
@@ -473,6 +478,8 @@ export default function Trips() {
       destinataire: trip.destinataire ?? '',
       quantiteChargee: trip.quantiteChargee,
       retourBordereaux: trip.retourBordereaux ?? '',
+      numeroWagon: trip.numeroWagon ?? '',
+      transporteur: trip.transporteur ?? '',
       statut: trip.statut,
       stops: initialStopsDraftFromTrip(trip),
       clientParticipants: trip.clientParticipants?.length
@@ -519,6 +526,8 @@ export default function Trips() {
       destinataire: trip.destinataire ?? '',
       quantiteChargee: trip.quantiteChargee,
       retourBordereaux: trip.retourBordereaux ?? '',
+      numeroWagon: trip.numeroWagon ?? '',
+      transporteur: trip.transporteur ?? '',
       statut: 'planifie',
       stops: draftStops,
       clientParticipants: dupParts,
@@ -691,6 +700,8 @@ export default function Trips() {
             destinataire: firstLieu?.trim() || formData.destinataire?.trim() || undefined,
             quantiteChargee: qtySum > 0 ? qtySum : undefined,
             retourBordereaux: formData.retourBordereaux?.trim() || undefined,
+            numeroWagon: formData.numeroWagon?.trim() || undefined,
+            transporteur: formData.transporteur?.trim() || undefined,
             stops: stopsPayload,
             clientParticipants: cpPayload,
             payeurParticipantId: payeurPayload,
@@ -749,6 +760,8 @@ export default function Trips() {
           destinataire: firstLieu?.trim() || formData.destinataire?.trim() || undefined,
           quantiteChargee: qtySum > 0 ? qtySum : undefined,
           retourBordereaux: formData.retourBordereaux?.trim() || undefined,
+          numeroWagon: formData.numeroWagon?.trim() || undefined,
+          transporteur: formData.transporteur?.trim() || undefined,
           statut: 'planifie',
           stops: stopsPayload,
           clientParticipants: cpPayload.length ? cpPayload : undefined,
@@ -797,6 +810,29 @@ export default function Trips() {
             toast.warning(
               'Trajet créé, mais la dépense de préfinancement n’a pas pu être enregistrée automatiquement.',
             );
+          }
+        }
+        if (formData.numeroWagon?.trim()) {
+          try {
+            const truck = trucks.find((t) => t.id === formData.tracteurId || t.id === formData.remorqueuseId);
+            await createCamrailOperation({
+              date: formData.dateDepart,
+              camionNom: truck?.nom || undefined,
+              camionImmatriculation: truck?.immatriculation || undefined,
+              quantite: qtySum > 0 ? qtySum : 0,
+              typeProduit: marchandiseLabel || undefined,
+              referenceAtc: referenceAtc || undefined,
+              destinataire: firstLieu?.trim() || formData.destinataire?.trim() || undefined,
+              dateChargement: formData.dateDepart,
+              dateLivraison: formData.dateArrivee || undefined,
+              numeroWagon: formData.numeroWagon.trim(),
+              transporteur: formData.transporteur?.trim() || undefined,
+              commentaires: `Lié au trajet ${formData.origine} → ${formData.destination}`,
+              utilisateur: user?.login || undefined,
+            });
+          } catch (camErr) {
+            console.error('auto-create camrail op', camErr);
+            toast.warning('Trajet créé, mais l\'opération Camrail n\'a pas pu être créée automatiquement.');
           }
         }
         toast.success('Trajet ajouté avec succès');
@@ -2140,6 +2176,33 @@ export default function Trips() {
                     placeholder="Montant de préfinancement"
                   />
                 </div>
+              </div>
+
+              <div className="rounded-lg border border-indigo-200/80 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20 p-3 space-y-3">
+                <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide">Lien Camrail (optionnel)</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="trip-numero-wagon">N° Wagon</Label>
+                    <Input
+                      id="trip-numero-wagon"
+                      value={formData.numeroWagon}
+                      onChange={(e) => setFormData({ ...formData, numeroWagon: e.target.value })}
+                      placeholder="Ex: W-12345"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="trip-transporteur">Transporteur</Label>
+                    <Input
+                      id="trip-transporteur"
+                      value={formData.transporteur}
+                      onChange={(e) => setFormData({ ...formData, transporteur: e.target.value })}
+                      placeholder="Ex: CAMRAIL, ..."
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Si un n° wagon est renseigné, une opération Camrail sera créée automatiquement.
+                </p>
               </div>
 
               <div>

@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/table';
 import { ListSortSelect } from '@/components/ListSortSelect';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Plus, Edit, Trash2, Search, Loader2, X } from 'lucide-react';
+import { ClipboardList, Plus, Edit, Trash2, Search, Loader2, X, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { exportToExcel, exportToPrintablePDF } from '@/lib/export-utils';
 import { frCollator, parseDateMs, stableSort } from '@/lib/list-sort';
@@ -199,6 +199,8 @@ export default function Camrail() {
     merchandiseQualities,
     trips,
     supplierLoadings,
+    createThirdParty,
+    deleteThirdParty,
   } = useApp();
   const { user, canManageFleet } = useAuth();
   const { isSubmitting, withGuard } = useSubmitGuard();
@@ -222,6 +224,8 @@ export default function Camrail() {
   const [camionAutreMode, setCamionAutreMode] = useState(false);
   const [typeAutreMode, setTypeAutreMode] = useState(false);
   const [destinataireLibre, setDestinataireLibre] = useState(false);
+  const [transporteurPanelOpen, setTransporteurPanelOpen] = useState(false);
+  const [newTransporteurName, setNewTransporteurName] = useState('');
 
   const qualityLabels = useMemo(
     () => uniqueSortedStrings(merchandiseQualities.map((q) => q.libelle)),
@@ -252,6 +256,41 @@ export default function Camrail() {
     const fromOps = operations.map((op) => op.transporteur);
     return uniqueSortedStrings([...fromFournisseurs, ...fromOps]);
   }, [thirdParties, operations]);
+
+  const transporteurFournisseurs = useMemo(
+    () =>
+      stableSort(
+        thirdParties.filter((tp) => tp.type === 'fournisseur' && tp.nom.trim()),
+        (a, b) => frCollator.compare(a.nom, b.nom),
+      ),
+    [thirdParties],
+  );
+
+  const handleAddTransporteur = async () => {
+    const name = newTransporteurName.trim();
+    if (!name) return;
+    if (transporteurFournisseurs.some((t) => t.nom.toLowerCase() === name.toLowerCase())) {
+      toast.error('Ce transporteur existe deja.');
+      return;
+    }
+    try {
+      await createThirdParty({ nom: name, type: 'fournisseur' });
+      setNewTransporteurName('');
+      toast.success(`Transporteur "${name}" cree.`);
+    } catch (err) {
+      toast.error('Erreur lors de la creation du transporteur.');
+    }
+  };
+
+  const handleDeleteTransporteur = async (id: string, nom: string) => {
+    if (!confirm(`Supprimer le transporteur "${nom}" ?`)) return;
+    try {
+      await deleteThirdParty(id);
+      toast.success(`Transporteur "${nom}" supprime.`);
+    } catch (err) {
+      toast.error('Erreur lors de la suppression.');
+    }
+  };
 
   const atcOptions = useMemo(() => {
     const fromTrips = trips.map((t) => t.referenceAtc);
@@ -990,6 +1029,75 @@ export default function Camrail() {
           </div>
         }
       />
+
+      {canManageFleet && (
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <button
+              type="button"
+              className="flex items-center gap-2 w-full text-left text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setTransporteurPanelOpen((o) => !o)}
+            >
+              <Users className="h-4 w-4" />
+              Gérer les transporteurs ({transporteurFournisseurs.length})
+              {transporteurPanelOpen ? (
+                <ChevronUp className="h-4 w-4 ml-auto" />
+              ) : (
+                <ChevronDown className="h-4 w-4 ml-auto" />
+              )}
+            </button>
+            {transporteurPanelOpen && (
+              <div className="mt-3 space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={newTransporteurName}
+                    onChange={(e) => setNewTransporteurName(e.target.value)}
+                    placeholder="Nom du transporteur"
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTransporteur();
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleAddTransporteur}
+                    disabled={!newTransporteurName.trim()}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Ajouter
+                  </Button>
+                </div>
+                {transporteurFournisseurs.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Aucun transporteur enregistre.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {transporteurFournisseurs.map((tp) => (
+                      <Badge
+                        key={tp.id}
+                        variant="secondary"
+                        className="flex items-center gap-1 pl-3 pr-1 py-1"
+                      >
+                        {tp.nom}
+                        <button
+                          type="button"
+                          className="ml-1 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
+                          onClick={() => handleDeleteTransporteur(tp.id, tp.nom)}
+                          title={`Supprimer ${tp.nom}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="pt-6 space-y-4">

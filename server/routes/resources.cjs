@@ -120,6 +120,8 @@ async function ensureTripsSchema() {
   await query(
     `ALTER TABLE trips ADD COLUMN IF NOT EXISTS "supplierLoadingId" UUID`,
   );
+  await query(`ALTER TABLE trips ADD COLUMN IF NOT EXISTS "numeroWagon" VARCHAR(120)`);
+  await query(`ALTER TABLE trips ADD COLUMN IF NOT EXISTS "transporteur" VARCHAR(255)`);
   tripsSchemaReady = true;
 }
 
