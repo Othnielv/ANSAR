@@ -174,3 +174,8 @@ export function computeOdTotalSolde(ops: OperationDiverse[]): number {
   }
   return total;
 }
+
+export function getOdSoldeActuel(): number {
+  const ops = getOperationsDiverses();
+  return computeOdTotalSolde(ops);
+}

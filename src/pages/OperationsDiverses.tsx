@@ -67,7 +67,7 @@ const PARTIE_COLORS: Record<OdPartie, string> = {
   SCB: 'bg-zinc-500/15 text-zinc-700 dark:text-zinc-400 border-zinc-500/30',
 };
 
-type DialogMode = 'operation' | 'retrait' | 'depot';
+type DialogMode = 'operation' | 'retrait' | 'depot' | 'depense';
 
 export default function OperationsDiverses() {
   const { canManageTreasury, user } = useAuth();
@@ -328,9 +328,56 @@ export default function OperationsDiverses() {
         return;
       }
 
+      if (dialogMode === 'depense') {
+        if (!formData.description.trim()) {
+          toast.error('Ajoute une description pour la dépense.');
+          return;
+        }
+        const refId = crypto.randomUUID();
+        const desc = formData.description.trim();
+
+        const odSortie: OperationDiverse = {
+          id: crypto.randomUUID(),
+          partie: formData.partie,
+          type: 'sortie',
+          montant,
+          date: today,
+          description: `Crédit vers caisse — ${desc}`,
+          reference: `depense-caisse:${refId}`,
+          utilisateur,
+          modePaiement: formData.modePaiement.trim() || undefined,
+          clientTierId: formData.clientTierId || undefined,
+        };
+
+        const caisseSortie: CaisseTransaction = {
+          id: Date.now().toString(),
+          type: 'sortie',
+          montant,
+          date: today,
+          description: `[OD ${formData.partie}] ${desc}`,
+          utilisateur,
+          modePaiement: 'Espèces',
+          reference: `depense-od:${refId}`,
+          clientTierId: formData.clientTierId || undefined,
+        };
+
+        if (isRemote()) {
+          await saveOperationDiverseRemote(odSortie);
+          await saveCaisseTransactionRemote(caisseSortie, true);
+          await refreshCaisseFromApi();
+          setOperations(getOperationsDiverses());
+        } else {
+          setOperations(addOperationDiverseLocal(odSortie));
+        }
+        toast.success(`Dépense de ${montant.toLocaleString('fr-FR')} FCFA depuis ${formData.partie} enregistrée.`);
+        setIsDialogOpen(false);
+        resetForm();
+        return;
+      }
+
       const base: Omit<OperationDiverse, 'id'> = {
         partie: formData.partie,
-        type: formData.type,
+        type: 'entree',
         montant,
         date: formData.date,
         description: formData.description.trim(),
@@ -417,8 +464,10 @@ export default function OperationsDiverses() {
   const dialogTitle = dialogMode === 'retrait'
     ? 'Retrait vers caisse'
     : dialogMode === 'depot'
-      ? 'Dépôt depuis caisse'
-      : editingOp ? 'Modifier l’operation' : 'Nouvelle operation diverse';
+      ? "Dépôt depuis caisse"
+      : dialogMode === 'depense'
+        ? "Dépense depuis un compte OD"
+        : editingOp ? "Modifier l'opération" : "Nouvelle entrée";
 
   return (
     <div className="space-y-6 p-1">
@@ -446,9 +495,13 @@ export default function OperationsDiverses() {
                 <ArrowUpFromLine className="mr-2 h-4 w-4" />
                 D{'é'}p{'ô'}t depuis caisse
               </Button>
+              <Button variant="outline" size="sm" onClick={() => openDialog('depense')}>
+                <TrendingDown className="mr-2 h-4 w-4" />
+                D{'é'}pense depuis compte
+              </Button>
               <Button onClick={() => openDialog('operation')}>
                 <Plus className="mr-2 h-4 w-4" />
-                Nouvelle op{'é'}ration
+                Nouvelle entr{'é'}e
               </Button>
               </>
             )}
@@ -484,43 +537,28 @@ export default function OperationsDiverses() {
                 </p>
               </div>
             )}
+            {dialogMode === 'depense' && (
+              <div className="rounded-lg border border-red-200/80 dark:border-red-900/50 bg-red-50/60 dark:bg-red-950/25 p-3">
+                <p className="text-sm text-red-800 dark:text-red-300">
+                  <TrendingDown className="inline h-4 w-4 mr-1" />
+                  Débite le compte OD et enregistre la dépense dans la caisse automatiquement.
+                </p>
+              </div>
+            )}
 
-            {dialogMode === 'operation' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>Type *</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(v: 'entree' | 'sortie') => {
-                      setFormData({
-                        ...formData,
-                        type: v,
-                        exclutRevenu: false,
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="entree">Entrée</SelectItem>
-                      <SelectItem value="sortie">Sortie</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="od-montant">Montant (FCFA) *</Label>
-                  <Input
-                    id="od-montant"
-                    type="number"
-                    value={formData.montant || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, montant: parseFloat(e.target.value) || 0 })
-                    }
-                    required
-                    min="0"
-                  />
-                </div>
+            {(dialogMode === 'operation' || dialogMode === 'depense') && (
+              <div>
+                <Label htmlFor="od-montant">Montant (FCFA) *</Label>
+                <Input
+                  id="od-montant"
+                  type="number"
+                  value={formData.montant || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, montant: parseFloat(e.target.value) || 0 })
+                  }
+                  required
+                  min="0"
+                />
               </div>
             )}
 
@@ -559,7 +597,7 @@ export default function OperationsDiverses() {
               </Select>
             </div>
 
-            {dialogMode === 'operation' && (
+            {(dialogMode === 'operation' || dialogMode === 'depense') && (
               <PaymentModePicker
                 id="od-mode-paiement"
                 label="Mode de paiement (optionnel)"
@@ -583,22 +621,23 @@ export default function OperationsDiverses() {
 
             <div>
               <Label htmlFor="od-description">
-                Description {dialogMode === 'operation' ? '*' : '(optionnel)'}
+                Description {(dialogMode === 'operation' || dialogMode === 'depense') ? '*' : '(optionnel)'}
               </Label>
               <Input
                 id="od-description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                required={dialogMode === 'operation'}
+                required={dialogMode === 'operation' || dialogMode === 'depense'}
                 placeholder={
                   dialogMode === 'retrait' ? 'Ex: Retrait Orange Money'
                   : dialogMode === 'depot' ? 'Ex: Dépôt vers MTN'
+                  : dialogMode === 'depense' ? 'Ex: Achat carburant, Paiement fournisseur...'
                   : ''
                 }
               />
             </div>
 
-            {dialogMode === 'operation' && (
+            {(dialogMode === 'operation' || dialogMode === 'depense') && (
               <>
                 <div>
                   <Label>Client (optionnel)</Label>
@@ -617,7 +656,7 @@ export default function OperationsDiverses() {
                   </p>
                 </div>
 
-                {formData.type === 'entree' && (
+                {dialogMode === 'operation' && formData.type === 'entree' && (
                   <div className="rounded-lg border border-violet-200/80 dark:border-violet-900/50 bg-violet-50/60 dark:bg-violet-950/25 p-3 space-y-2">
                     <div className="flex items-start gap-2">
                       <Checkbox
@@ -665,6 +704,8 @@ export default function OperationsDiverses() {
                   'Retirer vers caisse'
                 ) : dialogMode === 'depot' ? (
                   'Déposer depuis caisse'
+                ) : dialogMode === 'depense' ? (
+                  'Enregistrer la dépense'
                 ) : editingOp ? (
                   'Modifier'
                 ) : (

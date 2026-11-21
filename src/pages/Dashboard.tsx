@@ -24,6 +24,7 @@ import { exportDocumentToExcel, exportDocumentToPDF } from '@/lib/export-utils';
 import { formatClientOrderStatusFr } from '@/lib/client-operations';
 import { getCaisseSoldeActuel, getTotalBanqueDisponible, refreshBankFromApi } from '@/lib/bank-local';
 import { isRemoteCaisse, refreshCaisseFromApi } from '@/lib/caisse-local';
+import { getOdSoldeActuel, refreshOdFromApi } from '@/lib/operations-diverses';
 import {
   buildDashboardMonths,
   formatMonthLabelFr,
@@ -112,7 +113,7 @@ export default function Dashboard() {
         refreshTrips(),
         refreshParcelExpeditions(),
         refreshClientOrders(),
-        ...(isRemoteCaisse() ? [refreshCaisseFromApi(), refreshBankFromApi()] : []),
+        ...(isRemoteCaisse() ? [refreshCaisseFromApi(), refreshBankFromApi(), refreshOdFromApi()] : []),
       ]);
       setTreasuryTick((t) => t + 1);
     } catch (e) {
@@ -204,14 +205,16 @@ export default function Dashboard() {
   const activeTrucks = trucks.filter(t => t.statut === 'actif').length;
 
   /** Caisse + banque (rechargées à l’ouverture / actualisation du dashboard). */
-  const { soldeCaisseEspeces, soldeBanqueDisponible, tresorerieTotale } = useMemo(() => {
+  const { soldeCaisseEspeces, soldeBanqueDisponible, soldeOd, tresorerieTotale } = useMemo(() => {
     void treasuryTick;
     const caisse = getCaisseSoldeActuel();
     const banque = getTotalBanqueDisponible();
+    const od = getOdSoldeActuel();
     return {
       soldeCaisseEspeces: caisse,
       soldeBanqueDisponible: banque,
-      tresorerieTotale: caisse + banque,
+      soldeOd: od,
+      tresorerieTotale: caisse + banque + od,
     };
   }, [treasuryTick, invoices, expenses]);
   /** Factures clients : reste à encaisser. */
@@ -332,6 +335,7 @@ export default function Dashboard() {
           ['Flotte active', `${activeTrucks} / ${trucks.length}`],
           ['Caisse espèces', `${Math.round(soldeCaisseEspeces).toLocaleString('fr-FR')} FCFA`],
           ['Banque disponible', `${Math.round(soldeBanqueDisponible).toLocaleString('fr-FR')} FCFA`],
+          ['Opérations Diverses', `${Math.round(soldeOd).toLocaleString('fr-FR')} FCFA`],
           ['Trésorerie totale', `${Math.round(tresorerieTotale).toLocaleString('fr-FR')} FCFA`],
           ['Créances clients', `${Math.round(creancesClients).toLocaleString('fr-FR')} FCFA`],
           ['Position entreprise', `${Math.round(positionEntreprise).toLocaleString('fr-FR')} FCFA`],
@@ -520,7 +524,7 @@ export default function Dashboard() {
             Trésorerie &amp; hors trésorerie
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-1 max-w-3xl">
-            <strong className="text-foreground">Liquidités</strong> : argent déjà en caisse et sur les comptes bancaires.
+            <strong className="text-foreground">Liquidités</strong> : argent en caisse, comptes bancaires et opérations diverses.
             <span className="mx-1.5 text-border">|</span>
             <strong className="text-foreground">Hors caisse &amp; banque</strong> : créances clients (reste à encaisser sur les factures).
           </p>
@@ -530,9 +534,9 @@ export default function Dashboard() {
             <div className="rounded-2xl border-2 border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/20 p-4 sm:p-5 space-y-3">
               <div className="flex items-center gap-2 font-semibold text-emerald-800 dark:text-emerald-300">
                 <Wallet className="h-4 w-4 shrink-0" />
-                Liquidités (caisse + banques)
+                Liquidités (caisse + banques + OD)
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                 <div className="rounded-lg bg-background/80 p-3 border border-border/60">
                   <p className="text-xs text-muted-foreground mb-1">Caisse</p>
                   <p className="font-bold tabular-nums">{soldeCaisseEspeces.toLocaleString('fr-FR')} FCFA</p>
@@ -540,6 +544,10 @@ export default function Dashboard() {
                 <div className="rounded-lg bg-background/80 p-3 border border-border/60">
                   <p className="text-xs text-muted-foreground mb-1">Banque</p>
                   <p className="font-bold tabular-nums">{soldeBanqueDisponible.toLocaleString('fr-FR')} FCFA</p>
+                </div>
+                <div className="rounded-lg bg-background/80 p-3 border border-border/60">
+                  <p className="text-xs text-muted-foreground mb-1">Opérations Diverses</p>
+                  <p className="font-bold tabular-nums">{soldeOd.toLocaleString('fr-FR')} FCFA</p>
                 </div>
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-emerald-500/20">
