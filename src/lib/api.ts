@@ -775,6 +775,8 @@ export const operationsDiversesApi = {
     }),
   delete: (id: string) =>
     request<void>(`/operations-diverses/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  migrateCaisseToOd: () =>
+    request<{ migrated: number; message: string }>('/migrate-caisse-to-od', { method: 'POST' }),
 };
 
 // --- Soldes / Comptes Fournisseurs ---

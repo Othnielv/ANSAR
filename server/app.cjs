@@ -547,6 +547,70 @@ async function handleLocal(method, path, event, origin) {
     }
   }
 
+  // --- migration caisse → OD (non-espèces) ---
+  if (path === '/api/migrate-caisse-to-od' && method === 'POST') {
+    const CASH_MODES = ['', 'Espèces'];
+    const { rows: allTx } = await query(`SELECT * FROM caisse_transactions`);
+    const toMigrate = allTx.filter((t) => {
+      const mode = (t.modePaiement || '').trim();
+      return mode && !CASH_MODES.includes(mode);
+    });
+    if (toMigrate.length === 0) {
+      return json(200, { migrated: 0, message: 'Aucune transaction non-espèces à migrer.' }, origin);
+    }
+
+    const PARTIE_MAP = {
+      'MTN Mobile Money': 'MTN Mobile Money',
+      'Orange Money': 'Orange Money',
+      'Sub Account': 'Sub Account',
+      'Spectrum': 'Spectrum',
+      'Top Mobil': 'Top Mobil',
+      'MTN Shop': 'MTN Shop',
+      'Chèque': 'Chèque',
+      'Versement direct': 'Afriland',
+      'Versement indirect': 'Afb',
+    };
+    const BANQUES = ['Afriland','CBC','UBA','CCA','Access Bank','BGFI','Crédit du Sahel','Express Exchange','SGC','SCB'];
+
+    function guessPartie(mode) {
+      if (!mode) return 'Yassa';
+      for (const [key, val] of Object.entries(PARTIE_MAP)) {
+        if (mode.startsWith(key)) return val;
+      }
+      for (const b of BANQUES) {
+        if (mode.includes(b)) return b;
+      }
+      const low = mode.toLowerCase();
+      if (low.includes('mtn') && low.includes('shop')) return 'MTN Shop';
+      if (low.includes('mtn')) return 'MTN Mobile Money';
+      if (low.includes('orange')) return 'Orange Money';
+      if (low.includes('chèque') || low.includes('cheque')) return 'Chèque';
+      if (low.includes('virement') || low.includes('versement')) return 'Afriland';
+      return 'Yassa';
+    }
+
+    let migrated = 0;
+    for (const t of toMigrate) {
+      const partie = guessPartie(t.modePaiement);
+      await operationsDiverses.createOperation({
+        partie,
+        type: t.type,
+        montant: t.montant,
+        date: t.date,
+        description: t.description || 'Migration caisse',
+        reference: `migrated-caisse:${t.id}`,
+        utilisateur: t.utilisateur || 'Système',
+        modePaiement: t.modePaiement || undefined,
+        clientTierId: t.clientTierId || undefined,
+        exclutRevenu: Boolean(t.exclutRevenu),
+      }, actor);
+      await query(`DELETE FROM caisse_transactions WHERE id = $1`, [t.id]);
+      migrated++;
+    }
+
+    return json(200, { migrated, message: `${migrated} transaction(s) migrée(s) vers OD.` }, origin);
+  }
+
   // --- operations diverses ---
   if (path === '/api/operations-diverses') {
     if (method === 'GET') return json(200, await operationsDiverses.listOperations(), origin);

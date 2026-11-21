@@ -30,7 +30,9 @@ import {
   deleteOperationDiverseLocal,
   computeOdSoldeByPartie,
   computeOdTotalSolde,
+  migrateCaisseToOd,
 } from '@/lib/operations-diverses';
+import { refreshCaisseFromApi } from '@/lib/caisse-local';
 import {
   type CaisseTransaction,
   saveCaisseTransactionRemote,
@@ -332,6 +334,18 @@ export default function OperationsDiverses() {
     });
   };
 
+  const handleMigrate = () => {
+    if (!confirm('Migrer toutes les transactions non-espèces de la caisse vers Opérations Diverses ?\n\nCette action est irréversible.')) return;
+    withGuard(async () => {
+      const result = await migrateCaisseToOd();
+      if (result.migrated > 0) {
+        await refreshCaisseFromApi();
+        setOperations(getOperationsDiverses());
+      }
+      toast.success(result.message);
+    });
+  };
+
   const resolveClientName = (tierId?: string) => {
     if (!tierId) return null;
     return thirdParties.find((tp) => tp.id === tierId)?.nom || null;
@@ -352,17 +366,21 @@ export default function OperationsDiverses() {
         actions={
           canManageTreasury ? (
             <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" onClick={() => openDialog('retrait')}>
+              <Button variant="outline" size="sm" onClick={handleMigrate} disabled={isSubmitting}>
+                <Shuffle className="mr-2 h-4 w-4" />
+                Migrer depuis caisse
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => openDialog('retrait')}>
                 <ArrowDownToLine className="mr-2 h-4 w-4" />
                 Retrait vers caisse
               </Button>
-              <Button variant="outline" onClick={() => openDialog('depot')}>
+              <Button variant="outline" size="sm" onClick={() => openDialog('depot')}>
                 <ArrowUpFromLine className="mr-2 h-4 w-4" />
-                Dépôt depuis caisse
+                D{'é'}p{'ô'}t depuis caisse
               </Button>
               <Button onClick={() => openDialog('operation')}>
                 <Plus className="mr-2 h-4 w-4" />
-                Nouvelle opération
+                Nouvelle op{'é'}ration
               </Button>
             </div>
           ) : undefined
