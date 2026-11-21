@@ -195,6 +195,7 @@ export default function Chargements() {
   const [assignRows, setAssignRows] = useState<SupplierLoadingAssignmentPayload[]>([]);
   const [assignSearch, setAssignSearch] = useState('');
   const [assignClientId, setAssignClientId] = useState('');
+  const [assignClients, setAssignClients] = useState<{ clientId: string; qty: number | undefined }[]>([]);
 
   const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
   const [reassignLoading, setReassignLoading] = useState<SupplierLoading | null>(null);
@@ -629,6 +630,14 @@ export default function Chargements() {
 
   const openAssign = (l: SupplierLoading) => {
     setAssignLoading(l);
+    const existing = (l.assignments ?? [])
+      .filter((a) => a.orderStatus !== 'annulee')
+      .map((a) => ({
+        clientId: a.clientId || '',
+        qty: a.quantiteAffectee,
+      }))
+      .filter((a) => a.clientId);
+    setAssignClients(existing.length > 0 ? existing : []);
     setAssignRows(
       (l.assignments ?? [])
         .filter((a) => a.orderStatus !== 'annulee')
@@ -638,21 +647,11 @@ export default function Chargements() {
           notes: a.notes,
         })),
     );
-    setAssignSearch('');
-    setAssignClientId('');
     setAssignDialogOpen(true);
   };
 
-  const assignQtyCap = (orderId: string) => {
-    if (assignLoading?.quantite == null || assignLoading.quantite <= 0) return undefined;
-    const others = assignRows
-      .filter((r) => r.clientOrderId !== orderId)
-      .reduce((sum, r) => sum + (r.quantiteAffectee ?? 0), 0);
-    return Math.max(0, assignLoading.quantite - others);
-  };
-
-  const assignSelectionTotal = assignRows.reduce(
-    (sum, r) => sum + (r.quantiteAffectee ?? 0),
+  const assignSelectionTotal = assignClients.reduce(
+    (sum, r) => sum + (r.qty ?? 0),
     0,
   );
   const assignRemainder =
@@ -660,85 +659,87 @@ export default function Chargements() {
       ? Math.max(0, assignLoading.quantite - assignSelectionTotal)
       : null;
 
-  const ordersForAssign = useMemo(() => {
-    const q = assignSearch.trim().toLowerCase();
-    return stableSort(
-      clientOrders.filter((o) => {
-        if (o.statut === 'annulee') return false;
-        if (!orderMatchesAssignClientFilter(o, assignClientId)) return false;
-        return true;
-      }),
-      (a, b) => frCollator.compare(b.dateCommande, a.dateCommande),
-    ).filter((o) => {
-      if (!q) return true;
-      const clientNom = getOrderClientName(o);
-      return (
-        o.designation.toLowerCase().includes(q) ||
-        (o.reference ?? '').toLowerCase().includes(q) ||
-        clientNom.toLowerCase().includes(q)
-      );
-    });
-  }, [clientOrders, assignSearch, assignClientId, clientsById]);
-
-  const toggleOrderInAssign = (orderId: string) => {
-    const order = clientOrders.find((o) => o.id === orderId);
-    if (!order) return;
-    setAssignRows((prev) => {
-      const exists = prev.find((r) => r.clientOrderId === orderId);
-      if (exists) return prev.filter((r) => r.clientOrderId !== orderId);
-
-      let cap: number | undefined;
-      if (assignLoading?.quantite != null && assignLoading.quantite > 0) {
-        const others = prev
-          .filter((r) => r.clientOrderId !== orderId)
-          .reduce((sum, r) => sum + (r.quantiteAffectee ?? 0), 0);
-        cap = Math.max(0, assignLoading.quantite - others);
-      }
-      if (cap != null && cap <= 0) {
-        toast.error('Quantité du bon entièrement répartie.');
-        return prev;
-      }
-      const defaultQty =
-        cap != null
-          ? order.quantite != null && order.quantite > 0
-            ? Math.min(order.quantite, cap)
-            : cap
-          : undefined;
-      return [...prev, { clientOrderId: orderId, quantiteAffectee: defaultQty }];
-    });
+  const addAssignClient = (clientId: string) => {
+    if (!clientId || assignClients.some((c) => c.clientId === clientId)) return;
+    const remaining = assignRemainder ?? assignLoading?.quantite;
+    setAssignClients((prev) => [...prev, { clientId, qty: remaining != null && remaining > 0 ? remaining : undefined }]);
   };
 
-  const setAssignQty = (orderId: string, qty: number | undefined) => {
-    setAssignRows((prev) => {
-      let cap: number | undefined;
-      if (assignLoading?.quantite != null && assignLoading.quantite > 0) {
-        const others = prev
-          .filter((r) => r.clientOrderId !== orderId)
-          .reduce((sum, r) => sum + (r.quantiteAffectee ?? 0), 0);
-        cap = Math.max(0, assignLoading.quantite - others);
-      }
-      const nextQty = cap != null && qty != null && qty > cap ? cap : qty;
-      return prev.map((r) =>
-        r.clientOrderId === orderId ? { ...r, quantiteAffectee: nextQty } : r,
-      );
-    });
+  const removeAssignClient = (clientId: string) => {
+    setAssignClients((prev) => prev.filter((c) => c.clientId !== clientId));
+  };
+
+  const setAssignClientQty = (clientId: string, qty: number | undefined) => {
+    setAssignClients((prev) =>
+      prev.map((c) => (c.clientId === clientId ? { ...c, qty } : c)),
+    );
   };
 
   const saveAssignments = () =>
     withGuard(async () => {
       if (!assignLoading) return;
-      const err = validateLoadingAssignmentRows(
-        assignLoading.quantite,
-        assignLoading.unite,
-        assignRows,
-      );
-      if (err) {
-        toast.error(err);
+      if (assignClients.length === 0) {
+        await setSupplierLoadingAssignments(assignLoading.id, []);
+        toast.success('Affectations retirées.');
+        setAssignDialogOpen(false);
         return;
       }
-      await setSupplierLoadingAssignments(assignLoading.id, assignRows);
-      toast.success('Affectation enregistrée.');
-      setAssignDialogOpen(false);
+      const totalQty = assignLoading.quantite != null && assignLoading.quantite > 0 ? assignLoading.quantite : null;
+      if (totalQty != null) {
+        const sum = assignClients.reduce((s, c) => s + (c.qty ?? 0), 0);
+        if (assignClients.some((c) => c.qty == null || c.qty <= 0)) {
+          toast.error('Indiquez la quantité pour chaque client.');
+          return;
+        }
+        if (sum > totalQty + 1e-6) {
+          toast.error(`Total affecté (${sum}) dépasse la quantité du bon (${totalQty}).`);
+          return;
+        }
+      }
+
+      const existingAssigns = (assignLoading.assignments ?? []).filter((a) => a.orderStatus !== 'annulee');
+      const assignments: SupplierLoadingAssignmentPayload[] = [];
+      const createdOrderIds: string[] = [];
+
+      try {
+        for (const ac of assignClients) {
+          const existingAssign = existingAssigns.find((a) => a.clientId === ac.clientId);
+          if (existingAssign) {
+            assignments.push({
+              clientOrderId: existingAssign.clientOrderId,
+              quantiteAffectee: ac.qty,
+            });
+          } else {
+            const clientTp = clients.find((c) => c.id === ac.clientId);
+            const clientFields = buildOrderClientFields(false, ac.clientId, clientTp?.nom || '');
+            const order = await createClientOrder({
+              ...clientFields,
+              articleId: sanitizeOptionalUuid(assignLoading.articleId),
+              designation: assignLoading.designation,
+              quantite: ac.qty,
+              unite: assignLoading.unite,
+              statut: 'confirmee',
+              dateCommande: todayIso(),
+              notes: assignLoading.numeroBon
+                ? `Affectation — bon ${assignLoading.numeroBon.trim()}`
+                : 'Affectation bon fournisseur',
+            });
+            createdOrderIds.push(order.id);
+            assignments.push({
+              clientOrderId: order.id,
+              quantiteAffectee: ac.qty,
+            });
+          }
+        }
+        await setSupplierLoadingAssignments(assignLoading.id, assignments);
+        toast.success(`Bon affecté à ${assignClients.length} client${assignClients.length > 1 ? 's' : ''}.`);
+        setAssignDialogOpen(false);
+      } catch (err) {
+        for (const orderId of createdOrderIds) {
+          try { await deleteClientOrder(orderId); } catch {}
+        }
+        toast.error(err instanceof Error ? err.message : 'Erreur lors de l\'affectation.');
+      }
     });
 
   const activeAssignmentsOf = (l: SupplierLoading) =>
@@ -1980,9 +1981,9 @@ export default function Chargements() {
       </Dialog>
 
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Affecter le bon — {assignLoading?.designation}</DialogTitle>
+            <DialogTitle>Affecter — {assignLoading?.designation}</DialogTitle>
           </DialogHeader>
           {assignLoading && (
             <div className="space-y-4">
@@ -1990,109 +1991,75 @@ export default function Chargements() {
                 <span>{assignLoading.fournisseurNom}</span>
                 {assignLoading.quantite != null && assignLoading.quantite > 0 && (
                   <>
-                    <span className="font-medium">{assignLoading.quantite} {assignLoading.unite ?? ''}</span>
-                    <span>
-                      Affecté : {assignSelectionTotal}
-                      {assignRemainder != null && assignRemainder > 0 && (
-                        <span className="text-amber-700 dark:text-amber-400">
-                          {' '}· Reste : {assignRemainder}
-                        </span>
-                      )}
-                    </span>
+                    <span className="font-medium">{assignLoading.quantite} {assignLoading.unite ?? ‘’}</span>
+                    {assignClients.length > 0 && (
+                      <span>
+                        Affecté : {assignSelectionTotal}
+                        {assignRemainder != null && assignRemainder > 0 && (
+                          <span className="text-amber-700 dark:text-amber-400">
+                            {‘ ‘}· Reste : {assignRemainder}
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </>
                 )}
               </div>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <ThirdPartyPicker
-                    options={clients}
-                    value={assignClientId || ALL_CLIENTS_FILTER}
-                    onValueChange={(id) =>
-                      setAssignClientId(id === ALL_CLIENTS_FILTER ? '' : id)
-                    }
-                    placeholder="Filtrer par client…"
-                    searchPlaceholder="Rechercher un client…"
-                    topChoices={[
-                      {
-                        id: ALL_CLIENTS_FILTER,
-                        label: 'Tous les clients',
-                        keywords: 'tous reset filtre',
-                      },
-                      {
-                        id: WALK_IN_CLIENT_FILTER,
-                        label: 'Clients comptoir',
-                        keywords: 'passager sans fiche comptoir',
-                      },
-                    ]}
-                    orphanLabel={
-                      assignClientId &&
-                      assignClientId !== WALK_IN_CLIENT_FILTER &&
-                      assignClientId.startsWith('comptoir:')
-                        ? getClientKeyLabel(assignClientId)
-                        : undefined
-                    }
-                  />
-                </div>
-                <Input
-                  className="flex-1"
-                  placeholder="Rechercher…"
-                  value={assignSearch}
-                  onChange={(e) => setAssignSearch(e.target.value)}
+              <div>
+                <ThirdPartyPicker
+                  options={clients.filter((c) => !assignClients.some((ac) => ac.clientId === c.id))}
+                  value=""
+                  onValueChange={(id) => addAssignClient(id)}
+                  placeholder="Ajouter un client…"
+                  searchPlaceholder="Rechercher un client…"
                 />
               </div>
-              <div className="border rounded-md max-h-[320px] overflow-y-auto divide-y">
-                {ordersForAssign.length === 0 ? (
-                  <p className="p-4 text-sm text-center text-muted-foreground">
-                    Aucune commande active correspondant aux filtres.
-                  </p>
-                ) : null}
-                {ordersForAssign.map((o) => {
-                  const selected = assignRows.some((r) => r.clientOrderId === o.id);
-                  const row = assignRows.find((r) => r.clientOrderId === o.id);
-                  const maxQty = assignQtyCap(o.id);
-                  return (
-                    <div
-                      key={o.id}
-                      className="flex flex-wrap items-center gap-3 p-3 hover:bg-muted/40"
-                    >
-                      <Checkbox
-                        checked={selected}
-                        onCheckedChange={() => toggleOrderInAssign(o.id)}
-                      />
-                      <div className="flex-1 min-w-[180px]">
-                        <p className="font-medium text-sm">{getOrderClientName(o)}</p>
-                        {o.quantite != null && o.quantite > 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            cmd {o.quantite}{o.unite ? ` ${o.unite}` : ''}
-                          </p>
-                        )}
-                      </div>
-                      {selected && assignLoading.quantite != null && assignLoading.quantite > 0 && (
-                        <div className="w-32 space-y-1">
-                          <Label className="text-xs">
-                            Qté affectée
-                            {maxQty != null ? ` (max ${maxQty})` : ''}
-                          </Label>
-                          <NumberInput
-                            allowEmpty
-                            value={row?.quantiteAffectee}
-                            onChange={(v) => setAssignQty(o.id, v)}
-                            min={0}
-                            max={maxQty}
-                          />
+              {assignClients.length > 0 && (
+                <div className="border rounded-md divide-y">
+                  {assignClients.map((ac) => {
+                    const nom = clientsById.get(ac.clientId) ?? ‘—‘;
+                    return (
+                      <div key={ac.clientId} className="flex items-center gap-3 p-3">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{nom}</p>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                        {assignLoading.quantite != null && assignLoading.quantite > 0 && (
+                          <div className="w-28">
+                            <NumberInput
+                              allowEmpty
+                              value={ac.qty}
+                              onChange={(v) => setAssignClientQty(ac.clientId, v)}
+                              min={1}
+                              max={assignLoading.quantite}
+                              placeholder="Qté"
+                            />
+                          </div>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeAssignClient(ac.clientId)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {assignClients.length === 0 && (
+                <p className="text-sm text-center text-muted-foreground py-4">
+                  Ajoutez un ou plusieurs clients pour affecter ce bon.
+                </p>
+              )}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
                   Fermer
                 </Button>
                 <Button disabled={isSubmitting} onClick={() => void saveAssignments()}>
                   {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Enregistrer l’affectation
+                  Affecter
                 </Button>
               </div>
             </div>
