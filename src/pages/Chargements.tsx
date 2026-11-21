@@ -1512,35 +1512,42 @@ export default function Chargements() {
                 {!editing && (
                   <div className="space-y-2 rounded-md border border-dashed p-3">
                     <Label className="text-sm font-medium text-muted-foreground">
-                      Attribuer à un/des client(s) (optionnel)
+                      Client(s) (optionnel)
                     </Label>
-                    <div className="flex flex-wrap gap-2">
-                      {clients.map((c) => (
-                        <label
-                          key={c.id}
-                          className="flex items-center gap-1.5 text-sm cursor-pointer"
-                        >
-                          <Checkbox
-                            checked={form.clientIds.includes(c.id)}
-                            onCheckedChange={(checked) =>
-                              setForm((f) => ({
-                                ...f,
-                                clientIds: checked
-                                  ? [...f.clientIds, c.id]
-                                  : f.clientIds.filter((id) => id !== c.id),
-                              }))
-                            }
-                          />
-                          {c.nom}
-                        </label>
-                      ))}
-                    </div>
+                    <ThirdPartyPicker
+                      options={clients.filter((c) => !form.clientIds.includes(c.id))}
+                      value=""
+                      onValueChange={(id) => {
+                        if (id && !form.clientIds.includes(id)) {
+                          setForm((f) => ({ ...f, clientIds: [...f.clientIds, id] }));
+                        }
+                      }}
+                      placeholder="Ajouter un client..."
+                      searchPlaceholder="Rechercher un client..."
+                    />
                     {form.clientIds.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {form.clientIds.length} client{form.clientIds.length > 1 ? 's' : ''}{' '}
-                        sélectionné{form.clientIds.length > 1 ? 's' : ''} — une commande sera créée
-                        automatiquement pour chacun.
-                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {form.clientIds.map((id) => {
+                          const nom = clientsById.get(id) ?? id;
+                          return (
+                            <Badge key={id} variant="secondary" className="gap-1 pr-1">
+                              {nom}
+                              <button
+                                type="button"
+                                className="ml-1 rounded-full hover:bg-muted p-0.5"
+                                onClick={() =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    clientIds: f.clientIds.filter((cid) => cid !== id),
+                                  }))
+                                }
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 )}
