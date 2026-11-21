@@ -43,8 +43,7 @@ const PARTIE_COLORS: Record<OdPartie, string> = {
   SGC: 'bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30',
   'Top Mobile': 'bg-pink-500/15 text-pink-700 dark:text-pink-400 border-pink-500/30',
   'Crédit du Sahel': 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
-  Shop: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 border-cyan-500/30',
-  Account: 'bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30',
+  'Shop Account': 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 border-cyan-500/30',
 };
 
 export default function OperationsDiverses() {

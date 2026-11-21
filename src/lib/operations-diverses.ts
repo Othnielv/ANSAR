@@ -12,8 +12,7 @@ export const OD_PARTIES = [
   'SGC',
   'Top Mobile',
   'Crédit du Sahel',
-  'Shop',
-  'Account',
+  'Shop Account',
 ] as const;
 
 export type OdPartie = (typeof OD_PARTIES)[number];
