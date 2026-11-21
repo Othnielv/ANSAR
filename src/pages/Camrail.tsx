@@ -200,6 +200,7 @@ export default function Camrail() {
     trips,
     supplierLoadings,
     createThirdParty,
+    updateThirdParty,
     deleteThirdParty,
   } = useApp();
   const { user, canManageFleet } = useAuth();
@@ -226,6 +227,8 @@ export default function Camrail() {
   const [destinataireLibre, setDestinataireLibre] = useState(false);
   const [transporteurPanelOpen, setTransporteurPanelOpen] = useState(false);
   const [newTransporteurName, setNewTransporteurName] = useState('');
+  const [editingTransporteurId, setEditingTransporteurId] = useState<string | null>(null);
+  const [editingTransporteurName, setEditingTransporteurName] = useState('');
 
   const qualityLabels = useMemo(
     () => uniqueSortedStrings(merchandiseQualities.map((q) => q.libelle)),
@@ -289,6 +292,28 @@ export default function Camrail() {
       toast.success(`Transporteur "${nom}" supprime.`);
     } catch (err) {
       toast.error('Erreur lors de la suppression.');
+    }
+  };
+
+  const handleUpdateTransporteur = async () => {
+    if (!editingTransporteurId) return;
+    const name = editingTransporteurName.trim();
+    if (!name) return;
+    if (
+      transporteurFournisseurs.some(
+        (t) => t.id !== editingTransporteurId && t.nom.toLowerCase() === name.toLowerCase(),
+      )
+    ) {
+      toast.error('Un transporteur avec ce nom existe deja.');
+      return;
+    }
+    try {
+      await updateThirdParty(editingTransporteurId, { nom: name });
+      setEditingTransporteurId(null);
+      setEditingTransporteurName('');
+      toast.success('Transporteur modifie.');
+    } catch (err) {
+      toast.error('Erreur lors de la modification.');
     }
   };
 
@@ -1073,24 +1098,65 @@ export default function Camrail() {
                 {transporteurFournisseurs.length === 0 ? (
                   <p className="text-xs text-muted-foreground">Aucun transporteur enregistre.</p>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {transporteurFournisseurs.map((tp) => (
-                      <Badge
-                        key={tp.id}
-                        variant="secondary"
-                        className="flex items-center gap-1 pl-3 pr-1 py-1"
-                      >
-                        {tp.nom}
-                        <button
-                          type="button"
-                          className="ml-1 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
-                          onClick={() => handleDeleteTransporteur(tp.id, tp.nom)}
-                          title={`Supprimer ${tp.nom}`}
+                  <div className="space-y-1.5">
+                    {transporteurFournisseurs.map((tp) =>
+                      editingTransporteurId === tp.id ? (
+                        <div key={tp.id} className="flex items-center gap-2">
+                          <Input
+                            value={editingTransporteurName}
+                            onChange={(e) => setEditingTransporteurName(e.target.value)}
+                            className="h-8 text-sm flex-1"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleUpdateTransporteur();
+                              }
+                              if (e.key === 'Escape') {
+                                setEditingTransporteurId(null);
+                              }
+                            }}
+                          />
+                          <Button size="sm" variant="outline" className="h-8 px-2" onClick={handleUpdateTransporteur}>
+                            OK
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2"
+                            onClick={() => setEditingTransporteurId(null)}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div
+                          key={tp.id}
+                          className="flex items-center gap-2 group rounded-md border px-3 py-1.5 text-sm"
                         >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
+                          <span className="flex-1">{tp.nom}</span>
+                          <button
+                            type="button"
+                            className="opacity-0 group-hover:opacity-100 rounded p-0.5 hover:bg-muted transition-all"
+                            onClick={() => {
+                              setEditingTransporteurId(tp.id);
+                              setEditingTransporteurName(tp.nom);
+                            }}
+                            title="Modifier"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            className="opacity-0 group-hover:opacity-100 rounded p-0.5 hover:bg-destructive/20 hover:text-destructive transition-all"
+                            onClick={() => handleDeleteTransporteur(tp.id, tp.nom)}
+                            title="Supprimer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ),
+                    )}
                   </div>
                 )}
               </div>
