@@ -192,9 +192,6 @@ export default function Chargements() {
 
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignLoading, setAssignLoading] = useState<SupplierLoading | null>(null);
-  const [assignRows, setAssignRows] = useState<SupplierLoadingAssignmentPayload[]>([]);
-  const [assignSearch, setAssignSearch] = useState('');
-  const [assignClientId, setAssignClientId] = useState('');
   const [assignClients, setAssignClients] = useState<{ clientId: string; qty: number | undefined }[]>([]);
 
   const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
@@ -638,15 +635,6 @@ export default function Chargements() {
       }))
       .filter((a) => a.clientId);
     setAssignClients(existing.length > 0 ? existing : []);
-    setAssignRows(
-      (l.assignments ?? [])
-        .filter((a) => a.orderStatus !== 'annulee')
-        .map((a) => ({
-          clientOrderId: a.clientOrderId,
-          quantiteAffectee: a.quantiteAffectee,
-          notes: a.notes,
-        })),
-    );
     setAssignDialogOpen(true);
   };
 
