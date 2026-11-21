@@ -756,6 +756,9 @@ export interface OperationDiversePayload {
   description: string;
   reference?: string;
   utilisateur?: string;
+  modePaiement?: string;
+  clientTierId?: string;
+  exclutRevenu?: boolean;
 }
 
 export const operationsDiversesApi = {

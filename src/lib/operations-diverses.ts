@@ -27,6 +27,9 @@ export interface OperationDiverse {
   description: string;
   reference?: string;
   utilisateur?: string;
+  modePaiement?: string;
+  clientTierId?: string;
+  exclutRevenu?: boolean;
 }
 
 function isRemoteOd(): boolean {
@@ -53,6 +56,9 @@ function normalizeOd(r: Record<string, unknown>): OperationDiverse {
     description: String(r.description),
     reference: r.reference ? String(r.reference) : undefined,
     utilisateur: r.utilisateur ? String(r.utilisateur) : undefined,
+    modePaiement: r.modePaiement ? String(r.modePaiement) : undefined,
+    clientTierId: r.clientTierId ? String(r.clientTierId) : undefined,
+    exclutRevenu: r.exclutRevenu === true,
   };
 }
 
@@ -95,6 +101,9 @@ function toPayload(op: OperationDiverse): OperationDiversePayload {
     description: op.description,
     reference: op.reference,
     utilisateur: op.utilisateur,
+    modePaiement: op.modePaiement,
+    clientTierId: op.clientTierId,
+    exclutRevenu: op.exclutRevenu,
   };
 }
 

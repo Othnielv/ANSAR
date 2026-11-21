@@ -6,13 +6,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Search, Shuffle, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Shuffle, TrendingUp, TrendingDown, Loader2, Heart } from 'lucide-react';
 import { useSubmitGuard } from '@/hooks/useSubmitGuard';
 import { toast } from 'sonner';
 import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
+import { useApp } from '@/contexts/AppContext';
+import { ThirdPartyPicker } from '@/components/ThirdPartyPicker';
+import { PaymentModePicker } from '@/components/PaymentModePicker';
 import {
   type OperationDiverse,
   type OdPartie,
@@ -45,12 +49,23 @@ const PARTIE_COLORS: Record<OdPartie, string> = {
 
 export default function OperationsDiverses() {
   const { canManageTreasury, user } = useAuth();
+  const { thirdParties } = useApp();
   const [operations, setOperations] = useState<OperationDiverse[]>([]);
   const [activePartie, setActivePartie] = useState<'all' | OdPartie>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOp, setEditingOp] = useState<OperationDiverse | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { isSubmitting, withGuard } = useSubmitGuard();
+
+  const clients = useMemo(
+    () => thirdParties.filter((tp) => tp.type === 'client'),
+    [thirdParties],
+  );
+
+  const fournisseurs = useMemo(
+    () => thirdParties.filter((tp) => tp.type === 'fournisseur'),
+    [thirdParties],
+  );
 
   const [formData, setFormData] = useState({
     partie: 'Yassa' as OdPartie,
@@ -59,6 +74,9 @@ export default function OperationsDiverses() {
     date: new Date().toISOString().split('T')[0],
     description: '',
     reference: '',
+    modePaiement: '',
+    clientTierId: '',
+    exclutRevenu: false,
   });
 
   useEffect(() => {
@@ -69,7 +87,7 @@ export default function OperationsDiverses() {
         if (!cancelled) setOperations(getOperationsDiverses());
       } catch (e) {
         console.error(e);
-        toast.error('Impossible de charger les opérations diverses.');
+        toast.error('Impossible de charger les operations diverses.');
       }
     })();
     return () => { cancelled = true; };
@@ -116,6 +134,9 @@ export default function OperationsDiverses() {
       date: new Date().toISOString().split('T')[0],
       description: '',
       reference: '',
+      modePaiement: '',
+      clientTierId: '',
+      exclutRevenu: false,
     });
     setEditingOp(null);
   };
@@ -133,43 +154,38 @@ export default function OperationsDiverses() {
     }
 
     withGuard(async () => {
-      const utilisateur = user?.login || 'Système';
+      const utilisateur = user?.login || 'Systeme';
+      const base: Omit<OperationDiverse, 'id'> = {
+        partie: formData.partie,
+        type: formData.type,
+        montant,
+        date: formData.date,
+        description: formData.description.trim(),
+        reference: formData.reference.trim() || undefined,
+        utilisateur,
+        modePaiement: formData.modePaiement.trim() || undefined,
+        clientTierId: formData.clientTierId || undefined,
+        exclutRevenu: formData.type === 'entree' && formData.exclutRevenu ? true : undefined,
+      };
+
       if (editingOp) {
-        const updated: OperationDiverse = {
-          ...editingOp,
-          partie: formData.partie,
-          type: formData.type,
-          montant,
-          date: formData.date,
-          description: formData.description.trim(),
-          reference: formData.reference.trim() || undefined,
-          utilisateur,
-        };
+        const updated: OperationDiverse = { ...editingOp, ...base };
         if (isRemote()) {
           await saveOperationDiverseRemote(updated, editingOp.id);
           setOperations(getOperationsDiverses());
         } else {
           setOperations(updateOperationDiverseLocal(updated));
         }
-        toast.success('Opération modifiée.');
+        toast.success('Operation modifiee.');
       } else {
-        const newOp: OperationDiverse = {
-          id: crypto.randomUUID(),
-          partie: formData.partie,
-          type: formData.type,
-          montant,
-          date: formData.date,
-          description: formData.description.trim(),
-          reference: formData.reference.trim() || undefined,
-          utilisateur,
-        };
+        const newOp: OperationDiverse = { id: crypto.randomUUID(), ...base };
         if (isRemote()) {
           await saveOperationDiverseRemote(newOp);
           setOperations(getOperationsDiverses());
         } else {
           setOperations(addOperationDiverseLocal(newOp));
         }
-        toast.success('Opération ajoutée.');
+        toast.success('Operation ajoutee.');
       }
       setIsDialogOpen(false);
       resetForm();
@@ -185,12 +201,15 @@ export default function OperationsDiverses() {
       date: op.date,
       description: op.description,
       reference: op.reference || '',
+      modePaiement: op.modePaiement || '',
+      clientTierId: op.clientTierId || '',
+      exclutRevenu: op.type === 'entree' && Boolean(op.exclutRevenu),
     });
     setIsDialogOpen(true);
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm('Supprimer cette opération ?')) return;
+    if (!confirm('Supprimer cette operation ?')) return;
     withGuard(async () => {
       if (isRemote()) {
         await deleteOperationDiverseRemote(id);
@@ -198,14 +217,19 @@ export default function OperationsDiverses() {
       } else {
         setOperations(deleteOperationDiverseLocal(id));
       }
-      toast.success('Opération supprimée.');
+      toast.success('Operation supprimee.');
     });
+  };
+
+  const resolveClientName = (tierId?: string) => {
+    if (!tierId) return null;
+    return thirdParties.find((tp) => tp.id === tierId)?.nom || null;
   };
 
   return (
     <div className="space-y-6 p-1">
       <PageHeader
-        title="Opérations Diverses"
+        title="Operations Diverses"
         icon={Shuffle}
         gradient="from-indigo-500/20 via-purple-500/10 to-transparent"
         actions={
@@ -220,55 +244,38 @@ export default function OperationsDiverses() {
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
-                  Nouvelle opération
+                  Nouvelle operation
                 </Button>
               </DialogTrigger>
               <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
-                    {editingOp ? 'Modifier l’opération' : 'Nouvelle opération diverse'}
+                    {editingOp ? 'Modifier l’operation' : 'Nouvelle operation diverse'}
                   </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <Label>Partie *</Label>
-                      <Select
-                        value={formData.partie}
-                        onValueChange={(v) => setFormData({ ...formData, partie: v as OdPartie })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {OD_PARTIES.map((p) => (
-                            <SelectItem key={p} value={p}>
-                              {p}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
                       <Label>Type *</Label>
                       <Select
                         value={formData.type}
-                        onValueChange={(v: 'entree' | 'sortie') =>
-                          setFormData({ ...formData, type: v })
-                        }
+                        onValueChange={(v: 'entree' | 'sortie') => {
+                          setFormData({
+                            ...formData,
+                            type: v,
+                            exclutRevenu: false,
+                          });
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="entree">Entrée</SelectItem>
+                          <SelectItem value="entree">Entree</SelectItem>
                           <SelectItem value="sortie">Sortie</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="od-montant">Montant (FCFA) *</Label>
                       <Input
@@ -282,16 +289,45 @@ export default function OperationsDiverses() {
                         min="0"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="od-date">Date *</Label>
-                      <Input
-                        id="od-date"
-                        type="date"
-                        value={formData.date}
-                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                        required
-                      />
-                    </div>
+                  </div>
+
+                  <PaymentModePicker
+                    id="od-mode-paiement"
+                    label="Mode de paiement (optionnel)"
+                    value={formData.modePaiement}
+                    onChange={(mode) => setFormData((f) => ({ ...f, modePaiement: mode }))}
+                    entreprises={fournisseurs}
+                    allowNone
+                  />
+
+                  <div>
+                    <Label>Partie *</Label>
+                    <Select
+                      value={formData.partie}
+                      onValueChange={(v) => setFormData({ ...formData, partie: v as OdPartie })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {OD_PARTIES.map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {p}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="od-date">Date *</Label>
+                    <Input
+                      id="od-date"
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      required
+                    />
                   </div>
 
                   <div>
@@ -305,13 +341,49 @@ export default function OperationsDiverses() {
                   </div>
 
                   <div>
-                    <Label htmlFor="od-reference">Référence (optionnel)</Label>
-                    <Input
-                      id="od-reference"
-                      value={formData.reference}
-                      onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
+                    <Label>Client (optionnel)</Label>
+                    <ThirdPartyPicker
+                      className="mt-1"
+                      options={clients}
+                      value={formData.clientTierId}
+                      onValueChange={(clientTierId) =>
+                        setFormData((f) => ({ ...f, clientTierId }))
+                      }
+                      placeholder="Rattacher un client..."
+                      topChoices={[{ id: '', label: 'Aucun client' }]}
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Recommande pour les versements clients. Distinct de l&#39;utilisateur qui saisit.
+                    </p>
                   </div>
+
+                  {formData.type === 'entree' && (
+                    <div className="rounded-lg border border-violet-200/80 dark:border-violet-900/50 bg-violet-50/60 dark:bg-violet-950/25 p-3 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          id="od-exclut-revenu"
+                          checked={formData.exclutRevenu}
+                          onCheckedChange={(c) => {
+                            const on = c === true;
+                            setFormData((f) => ({
+                              ...f,
+                              exclutRevenu: on,
+                            }));
+                          }}
+                          className="mt-1"
+                        />
+                        <div className="space-y-1">
+                          <Label htmlFor="od-exclut-revenu" className="font-medium cursor-pointer flex items-center gap-1.5">
+                            <Heart className="h-3.5 w-3.5 text-violet-600" />
+                            Financement (hors encaissement / benefice)
+                          </Label>
+                          <p className="text-xs text-muted-foreground leading-snug">
+                            Le montant augmente le solde OD mais n&#39;entre pas dans l&#39;encaissement du tableau de bord.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex justify-end gap-3">
                     <Button
@@ -362,7 +434,7 @@ export default function OperationsDiverses() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-green-600" />
-              Entrées{activePartie !== 'all' ? ` (${activePartie})` : ''}
+              Entrees{activePartie !== 'all' ? ` (${activePartie})` : ''}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -380,7 +452,7 @@ export default function OperationsDiverses() {
           </CardHeader>
           <CardContent>
             <div className="text-xl font-bold text-red-600 tabular-nums">
-              −{filteredStats.totalSorties.toLocaleString('fr-FR')} FCFA
+              {'−'}{filteredStats.totalSorties.toLocaleString('fr-FR')} FCFA
             </div>
           </CardContent>
         </Card>
@@ -440,8 +512,8 @@ export default function OperationsDiverses() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <CardTitle className="shrink-0">
               {activePartie !== 'all'
-                ? `Opérations — ${activePartie}`
-                : 'Toutes les opérations'}
+                ? `Operations — ${activePartie}`
+                : 'Toutes les operations'}
             </CardTitle>
             <div className="relative w-full lg:max-w-xs">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -474,7 +546,7 @@ export default function OperationsDiverses() {
             {filteredOps.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Shuffle className="mx-auto h-10 w-10 mb-3 opacity-30" />
-                <p className="text-sm">Aucune opération diverse trouvée.</p>
+                <p className="text-sm">Aucune operation diverse trouvee.</p>
               </div>
             ) : (
               <div className="overflow-x-auto -mx-6 px-6">
@@ -484,10 +556,11 @@ export default function OperationsDiverses() {
                       <TableHead>Date</TableHead>
                       <TableHead>Partie</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead className="text-right">Entrée</TableHead>
+                      <TableHead className="text-right">Entree</TableHead>
                       <TableHead className="text-right">Sortie</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead>Référence</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Mode</TableHead>
                       {canManageTreasury && <TableHead className="w-20">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -507,7 +580,7 @@ export default function OperationsDiverses() {
                             variant={op.type === 'entree' ? 'default' : 'destructive'}
                             className="text-xs"
                           >
-                            {op.type === 'entree' ? 'Entrée' : 'Sortie'}
+                            {op.type === 'entree' ? 'Entree' : 'Sortie'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-green-600 font-medium">
@@ -524,7 +597,10 @@ export default function OperationsDiverses() {
                           {op.description}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {op.reference || '—'}
+                          {resolveClientName(op.clientTierId) || '—'}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {op.modePaiement || '—'}
                         </TableCell>
                         {canManageTreasury && (
                           <TableCell>
