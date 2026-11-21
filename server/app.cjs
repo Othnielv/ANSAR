@@ -592,11 +592,14 @@ async function handleLocal(method, path, event, origin) {
     let migrated = 0;
     for (const t of toMigrate) {
       const partie = guessPartie(t.modePaiement);
+      const dateStr = t.date instanceof Date
+        ? t.date.toISOString().split('T')[0]
+        : String(t.date).split('T')[0];
       await operationsDiverses.createOperation({
         partie,
         type: t.type,
         montant: t.montant,
-        date: t.date,
+        date: dateStr,
         description: t.description || 'Migration caisse',
         reference: `migrated-caisse:${t.id}`,
         utilisateur: t.utilisateur || 'Système',
