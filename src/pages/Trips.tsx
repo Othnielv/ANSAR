@@ -49,7 +49,6 @@ import {
 } from '@/lib/trip-client-participants';
 import type { TripClientParticipant } from '@/lib/trip-client-participants';
 import { syncTripBonToClientAccounts } from '@/lib/trip-bon-client-sync';
-import { createCamrailOperation } from '@/lib/camrail-operations';
 import { formatTripCode } from '@/lib/trip-display';
 import {
   filterActivityNearDate,
@@ -810,29 +809,6 @@ export default function Trips() {
             toast.warning(
               'Trajet créé, mais la dépense de préfinancement n’a pas pu être enregistrée automatiquement.',
             );
-          }
-        }
-        if (formData.numeroWagon?.trim()) {
-          try {
-            const truck = trucks.find((t) => t.id === formData.tracteurId || t.id === formData.remorqueuseId);
-            await createCamrailOperation({
-              date: formData.dateDepart,
-              camionNom: truck?.nom || undefined,
-              camionImmatriculation: truck?.immatriculation || undefined,
-              quantite: qtySum > 0 ? qtySum : 0,
-              typeProduit: marchandiseLabel || undefined,
-              referenceAtc: referenceAtc || undefined,
-              destinataire: firstLieu?.trim() || formData.destinataire?.trim() || undefined,
-              dateChargement: formData.dateDepart,
-              dateLivraison: formData.dateArrivee || undefined,
-              numeroWagon: formData.numeroWagon.trim(),
-              transporteur: formData.transporteur?.trim() || undefined,
-              commentaires: `Lié au trajet ${formData.origine} → ${formData.destination}`,
-              utilisateur: user?.login || undefined,
-            });
-          } catch (camErr) {
-            console.error('auto-create camrail op', camErr);
-            toast.warning('Trajet créé, mais l\'opération Camrail n\'a pas pu être créée automatiquement.');
           }
         }
         toast.success('Trajet ajouté avec succès');

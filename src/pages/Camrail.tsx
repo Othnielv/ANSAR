@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/table';
 import { ListSortSelect } from '@/components/ListSortSelect';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Plus, Edit, Trash2, Search, Loader2, X, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { ClipboardList, Plus, Edit, Trash2, Search, Loader2, X, Users, ChevronDown, ChevronUp, Train, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { exportToExcel, exportToPrintablePDF } from '@/lib/export-utils';
 import { frCollator, parseDateMs, stableSort } from '@/lib/list-sort';
@@ -329,6 +329,54 @@ export default function Camrail() {
     [operations],
   );
 
+  type WagonDisponible = {
+    wagon: string;
+    tripId: string;
+    atc: string;
+    quantiteTotal: number;
+    quantiteDispatchee: number;
+    quantiteRestante: number;
+    dateDepart: string;
+    origine: string;
+    destination: string;
+    camionNom: string;
+    camionImmat: string;
+    typeProduit: string;
+    transporteur: string;
+    destinataire: string;
+  };
+
+  const wagonsDisponibles = useMemo<WagonDisponible[]>(() => {
+    const wagonTrips = trips.filter((t) => t.numeroWagon?.trim());
+    const dispatchedByWagon = new Map<string, number>();
+    for (const op of operations) {
+      const w = op.numeroWagon?.trim();
+      if (w) dispatchedByWagon.set(w, (dispatchedByWagon.get(w) || 0) + (op.quantite || 0));
+    }
+    return wagonTrips.map((t) => {
+      const wagon = t.numeroWagon!.trim();
+      const total = t.quantiteChargee || 0;
+      const dispatched = dispatchedByWagon.get(wagon) || 0;
+      const truck = trucks.find((tr) => tr.id === t.tracteurId || tr.id === t.remorqueuseId);
+      return {
+        wagon,
+        tripId: t.id,
+        atc: t.referenceAtc || '',
+        quantiteTotal: total,
+        quantiteDispatchee: dispatched,
+        quantiteRestante: Math.max(0, total - dispatched),
+        dateDepart: t.dateDepart,
+        origine: t.origine,
+        destination: t.destination,
+        camionNom: truck?.nom || '',
+        camionImmat: truck?.immatriculation || '',
+        typeProduit: t.marchandise || '',
+        transporteur: t.transporteur || '',
+        destinataire: t.destinataire || '',
+      };
+    });
+  }, [trips, operations, trucks]);
+
   const filterCamionOptions = useMemo(
     () => uniqueSortedStrings(operations.map((op) => formatCamrailCamionLabel(op))),
     [operations],
@@ -519,6 +567,27 @@ export default function Camrail() {
     setCamionAutreMode(false);
     setTypeAutreMode(false);
     setDestinataireLibre(false);
+    setFormKey((k) => k + 1);
+    setDialogOpen(true);
+  };
+
+  const dispatchFromWagon = (w: WagonDisponible) => {
+    setEditing(null);
+    setForm({
+      date: todayIso(),
+      camionNom: w.camionNom,
+      camionImmatriculation: w.camionImmat,
+      quantite: w.quantiteRestante > 0 ? w.quantiteRestante : undefined,
+      typeProduit: w.typeProduit,
+      referenceAtc: w.atc,
+      atComplement: undefined,
+      destinataire: w.destinataire,
+      dateChargement: w.dateDepart?.split('T')[0] || '',
+      dateLivraison: '',
+      numeroWagon: w.wagon,
+      commentaires: `Dispatch wagon ${w.wagon} — ${w.origine} → ${w.destination}`,
+      transporteur: w.transporteur,
+    });
     setFormKey((k) => k + 1);
     setDialogOpen(true);
   };
@@ -1161,6 +1230,76 @@ export default function Camrail() {
                 )}
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Wagons disponibles */}
+      {wagonsDisponibles.length > 0 && (
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2 mb-3">
+              <Train className="h-4 w-4 text-sky-600" />
+              <span className="text-sm font-semibold">
+                Wagons disponibles ({wagonsDisponibles.length})
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Wagon</TableHead>
+                    <TableHead>ATC</TableHead>
+                    <TableHead>Trajet</TableHead>
+                    <TableHead className="text-right">Qté totale</TableHead>
+                    <TableHead className="text-right">Dispatché</TableHead>
+                    <TableHead className="text-right">Restant</TableHead>
+                    {canManageFleet && <TableHead className="text-center">Action</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {wagonsDisponibles.map((w) => (
+                    <TableRow key={w.tripId}>
+                      <TableCell className="font-mono font-semibold">{w.wagon}</TableCell>
+                      <TableCell>{w.atc || '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {w.origine} <ArrowRight className="inline h-3 w-3" /> {w.destination}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {w.quantiteTotal.toLocaleString('fr-FR')}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {w.quantiteDispatchee.toLocaleString('fr-FR')}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold">
+                        {w.quantiteRestante > 0 ? (
+                          <span className="text-green-600 dark:text-green-400">
+                            {w.quantiteRestante.toLocaleString('fr-FR')}
+                          </span>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">Complet</Badge>
+                        )}
+                      </TableCell>
+                      {canManageFleet && (
+                        <TableCell className="text-center">
+                          {w.quantiteRestante > 0 ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => dispatchFromWagon(w)}
+                            >
+                              Dispatcher
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}
