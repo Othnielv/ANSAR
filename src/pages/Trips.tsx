@@ -48,6 +48,7 @@ import {
   sumParticipantsQuantite,
 } from '@/lib/trip-client-participants';
 import type { TripClientParticipant } from '@/lib/trip-client-participants';
+import { createCamrailOperation } from '@/lib/camrail-operations';
 import { syncTripBonToClientAccounts } from '@/lib/trip-bon-client-sync';
 import { formatTripCode } from '@/lib/trip-display';
 import {
@@ -206,7 +207,7 @@ export default function Trips() {
     deleteMerchandiseQuality,
   } = useApp();
   const navigate = useNavigate();
-  const { canManageFleet, canManageAccounting, isAdmin } = useAuth();
+  const { user, canManageFleet, canManageAccounting, isAdmin } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   /** Si défini, le formulaire du dialogue est en mode édition pour ce trajet. */
   const [editingTripId, setEditingTripId] = useState<string | null>(null);
@@ -809,6 +810,29 @@ export default function Trips() {
             toast.warning(
               'Trajet créé, mais la dépense de préfinancement n’a pas pu être enregistrée automatiquement.',
             );
+          }
+        }
+        if (formData.client === 'CAMRAIL' && formData.numeroWagon?.trim()) {
+          try {
+            const truck = trucks.find((t) => t.id === formData.tracteurId || t.id === formData.remorqueuseId);
+            await createCamrailOperation({
+              date: formData.dateDepart,
+              camionNom: truck?.nom || undefined,
+              camionImmatriculation: truck?.immatriculation || undefined,
+              quantite: qtySum > 0 ? qtySum : 0,
+              typeProduit: marchandiseLabel || undefined,
+              referenceAtc: referenceAtc || undefined,
+              destinataire: firstLieu?.trim() || formData.destinataire?.trim() || undefined,
+              dateChargement: formData.dateDepart,
+              dateLivraison: formData.dateArrivee || undefined,
+              numeroWagon: formData.numeroWagon.trim(),
+              transporteur: formData.transporteur?.trim() || undefined,
+              commentaires: `Trajet ${formData.origine} → ${formData.destination}`,
+              utilisateur: user?.login || undefined,
+            });
+          } catch (camErr) {
+            console.error('auto-create camrail op', camErr);
+            toast.warning("Trajet cree, mais l'operation Camrail n'a pas pu etre creee automatiquement.");
           }
         }
         toast.success('Trajet ajouté avec succès');
@@ -2154,31 +2178,64 @@ export default function Trips() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-indigo-200/80 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20 p-3 space-y-3">
-                <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide">Lien Camrail (optionnel)</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="trip-numero-wagon">N° Wagon</Label>
-                    <Input
-                      id="trip-numero-wagon"
-                      value={formData.numeroWagon}
-                      onChange={(e) => setFormData({ ...formData, numeroWagon: e.target.value })}
-                      placeholder="Ex: W-12345"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="trip-transporteur">Transporteur</Label>
-                    <Input
-                      id="trip-transporteur"
-                      value={formData.transporteur}
-                      onChange={(e) => setFormData({ ...formData, transporteur: e.target.value })}
-                      placeholder="Ex: CAMRAIL, ..."
-                    />
-                  </div>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Si un n° wagon est renseigné, une opération Camrail sera créée automatiquement.
-                </p>
+              <div className="rounded-lg border border-sky-200/80 dark:border-sky-900/50 bg-sky-50/40 dark:bg-sky-950/20 p-3 space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.client === 'CAMRAIL'}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormData({ ...formData, client: 'CAMRAIL' });
+                      } else {
+                        setFormData({ ...formData, client: '', numeroWagon: '', transporteur: '' });
+                      }
+                    }}
+                    className="h-4 w-4 rounded border-sky-400 text-sky-600 focus:ring-sky-500"
+                  />
+                  <span className="text-sm font-semibold text-sky-700 dark:text-sky-300">
+                    Client CAMRAIL
+                  </span>
+                </label>
+                {formData.client === 'CAMRAIL' && (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="trip-numero-wagon">N° Wagon *</Label>
+                        <Input
+                          id="trip-numero-wagon"
+                          value={formData.numeroWagon}
+                          onChange={(e) => setFormData({ ...formData, numeroWagon: e.target.value })}
+                          placeholder="Ex: W-12345"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="trip-transporteur">Transporteur *</Label>
+                        <Select
+                          value={formData.transporteur}
+                          onValueChange={(v) => setFormData({ ...formData, transporteur: v })}
+                        >
+                          <SelectTrigger id="trip-transporteur">
+                            <SelectValue placeholder="Choisir un transporteur" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {thirdParties
+                              .filter((tp) => tp.type === 'transporteur' && tp.nom.trim())
+                              .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+                              .map((tp) => (
+                                <SelectItem key={tp.id} value={tp.nom}>
+                                  {tp.nom}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Le wagon sera disponible pour dispatch dans l'ecran Camrail.
+                    </p>
+                  </>
+                )}
               </div>
 
               <div>
