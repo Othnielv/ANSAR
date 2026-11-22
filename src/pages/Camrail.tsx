@@ -225,7 +225,7 @@ export default function Camrail() {
   const [camionAutreMode, setCamionAutreMode] = useState(false);
   const [typeAutreMode, setTypeAutreMode] = useState(false);
   const [destinataireLibre, setDestinataireLibre] = useState(false);
-  const [transporteurPanelOpen, setTransporteurPanelOpen] = useState(false);
+  const [transporteurPanelOpen, setTransporteurPanelOpen] = useState(true);
   const [newTransporteurName, setNewTransporteurName] = useState('');
   const [editingTransporteurId, setEditingTransporteurId] = useState<string | null>(null);
   const [editingTransporteurName, setEditingTransporteurName] = useState('');
