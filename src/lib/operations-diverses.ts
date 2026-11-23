@@ -27,6 +27,7 @@ export const OD_PARTIES = [
   'BGFI',
   'Express Exchange',
   'SCB',
+  'Master Ansar',
 ] as const;
 
 export type OdPartie = (typeof OD_PARTIES)[number];

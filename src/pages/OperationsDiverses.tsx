@@ -65,6 +65,7 @@ const PARTIE_COLORS: Record<OdPartie, string> = {
   BGFI: 'bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-400 border-fuchsia-500/30',
   'Express Exchange': 'bg-stone-500/15 text-stone-700 dark:text-stone-400 border-stone-500/30',
   SCB: 'bg-zinc-500/15 text-zinc-700 dark:text-zinc-400 border-zinc-500/30',
+  'Master Ansar': 'bg-amber-600/15 text-amber-800 dark:text-amber-300 border-amber-600/30',
 };
 
 type DialogMode = 'operation' | 'retrait' | 'depot' | 'depense';
