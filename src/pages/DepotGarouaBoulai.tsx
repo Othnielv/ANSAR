@@ -50,7 +50,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { exportToExcel, exportToPrintablePDF } from '@/lib/export-utils';
-import { frCollator, parseDateMs, stableSort } from '@/lib/list-sort';
+import { frCollator, formatDateFr, parseDateMs, stableSort } from '@/lib/list-sort';
 import { truckMissionLabel } from '@/lib/trip-mission-context';
 import { formatLoadingEntryModeFr } from '@/lib/hub-transit';
 import { SUPPLIER_LOADING_STATUS_OPTIONS, formatSupplierLoadingStatusFr, isLoadingOpenForSelection } from '@/lib/supplier-loadings';
@@ -348,7 +348,7 @@ export default function DepotGarouaBoulai() {
   };
 
   const exportColumns = [
-    { header: 'Date', value: (m: DepotGarouaMovement) => new Date(m.date).toLocaleDateString('fr-FR') },
+    { header: 'Date', value: (m: DepotGarouaMovement) => formatDateFr(m.date) },
     { header: 'Camion', value: truckLabel },
     { header: 'Type', value: (m: DepotGarouaMovement) => formatDepotGarouaTypeFr(m.type) },
     { header: 'Quantité', value: (m: DepotGarouaMovement) => m.quantite },
@@ -386,14 +386,12 @@ export default function DepotGarouaBoulai() {
     {
       header: 'Date bon',
       value: (l: (typeof filteredBons)[number]) =>
-        new Date(l.dateChargement).toLocaleDateString('fr-FR'),
+        formatDateFr(l.dateChargement),
     },
     {
       header: 'Arrivée dépôt',
       value: (l: (typeof filteredBons)[number]) =>
-        l.dateArriveeHub
-          ? new Date(l.dateArriveeHub).toLocaleDateString('fr-FR')
-          : '—',
+        formatDateFr(l.dateArriveeHub),
     },
   ];
 
@@ -855,12 +853,10 @@ export default function DepotGarouaBoulai() {
                     </TableCell>
                     <TableCell className="text-sm">{truckLabelForBon(l.camionId)}</TableCell>
                     <TableCell>
-                      {new Date(l.dateChargement).toLocaleDateString('fr-FR')}
+                      {formatDateFr(l.dateChargement)}
                     </TableCell>
                     <TableCell>
-                      {l.dateArriveeHub
-                        ? new Date(l.dateArriveeHub).toLocaleDateString('fr-FR')
-                        : '—'}
+                      {formatDateFr(l.dateArriveeHub)}
                     </TableCell>
                   </TableRow>
                 ))
@@ -938,7 +934,7 @@ export default function DepotGarouaBoulai() {
                 ) : (
                   sortedMovements.map((m) => (
                     <TableRow key={m.id}>
-                      <TableCell>{new Date(m.date).toLocaleDateString('fr-FR')}</TableCell>
+                      <TableCell>{formatDateFr(m.date)}</TableCell>
                       <TableCell className="font-medium">{truckLabel(m)}</TableCell>
                       <TableCell>
                         <Badge variant={m.type === 'entree' ? 'default' : 'secondary'}>

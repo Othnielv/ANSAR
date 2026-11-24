@@ -1,4 +1,5 @@
 import { useRef, useState, useMemo, useEffect } from 'react';
+import { formatDateFr } from '@/lib/list-sort';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Truck, ClipboardList, DollarSign, TrendingUp, TrendingDown, FileText, Users, Package, AlertCircle, LayoutDashboard, Building2, Wallet, RefreshCw, HardDrive, Upload, Receipt, Layers, UserCircle2, UserCog } from 'lucide-react';
@@ -466,10 +467,10 @@ export default function Dashboard() {
             </Button>
             <ExportButtons onExcel={handleExportExcel} onPdf={handleExportPDF} size="sm" />
             <Badge variant="outline" className="text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2 hidden sm:flex">
-              {EMOJI.date} {new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              {EMOJI.date} {formatDateFr(new Date().toISOString(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </Badge>
             <Badge variant="outline" className="text-xs px-2 py-1.5 flex sm:hidden">
-              {EMOJI.date} {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+              {EMOJI.date} {formatDateFr(new Date().toISOString(), { day: 'numeric', month: 'short' })}
             </Badge>
             {user?.role === 'admin' && (
               <>
@@ -947,7 +948,7 @@ export default function Dashboard() {
                         </Badge>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                        <span>{EMOJI.date} {new Date(order.dateCommande).toLocaleDateString('fr-FR')}</span>
+                        <span>{EMOJI.date} {formatDateFr(order.dateCommande)}</span>
                         {order.reference && <span className="hidden sm:inline">{EMOJI.liste} {order.reference}</span>}
                       </div>
                     </div>

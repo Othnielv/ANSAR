@@ -49,7 +49,7 @@ import {
 } from '@/lib/invoice-branding';
 import { buildSingleInvoicePdfInnerHtml } from '@/lib/invoice-single-pdf-html';
 import { openPdfPrintWindow } from '@/lib/pdf-print';
-import { frCollator, parseDateMs, stableSort } from '@/lib/list-sort';
+import { frCollator, formatDateFr, parseDateMs, stableSort } from '@/lib/list-sort';
 import { truckMissionLabel } from '@/lib/trip-mission-context';
 import { ListSortSelect } from '@/components/ListSortSelect';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -811,10 +811,10 @@ export default function Invoices() {
       parts.push(soldeLabels[filters.paiementSolde]);
     }
     if (filters.dateFrom) {
-      parts.push(`Date du: ${new Date(filters.dateFrom).toLocaleDateString('fr-FR')}`);
+      parts.push(`Date du: ${formatDateFr(filters.dateFrom)}`);
     }
     if (filters.dateTo) {
-      parts.push(`Date au: ${new Date(filters.dateTo).toLocaleDateString('fr-FR')}`);
+      parts.push(`Date au: ${formatDateFr(filters.dateTo)}`);
     }
     const sortLabel = INVOICE_SORT_OPTIONS.find((o) => o.value === listSort)?.label;
     if (sortLabel) parts.push(`Tri: ${sortLabel}`);
@@ -969,7 +969,7 @@ export default function Invoices() {
         { header: 'N° facture', value: (inv) => inv.numero },
         {
           header: 'Date',
-          value: (inv) => new Date(inv.dateCreation).toLocaleDateString('fr-FR'),
+          value: (inv) => formatDateFr(inv.dateCreation),
         },
         {
           header: 'Client / fournisseur',
@@ -1292,7 +1292,7 @@ export default function Invoices() {
                           const driver = tripDetails ? drivers.find(d => d.id === tripDetails.chauffeurId) : null;
                           // Extraire les 6 derniers caractères de l'ID pour un affichage plus court
                           const shortId = trip.id.slice(-6);
-                          const dateDepart = tripDetails ? new Date(tripDetails.dateDepart).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+                          const dateDepart = tripDetails ? formatDateFr(tripDetails.dateDepart, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
                           const resteFact = getTripRemainingRecetteToInvoice(trip, invoices);
                           const dejaTtc = sumMontantTTCForTripInvoices(trip.id, invoices);
 
@@ -1351,7 +1351,7 @@ export default function Invoices() {
                                   </span>
                                 </div>
                                 <span className="truncate text-xs text-muted-foreground">
-                                  {new Date(ex.dateDepart).toLocaleDateString('fr-FR')} · CA lignes{' '}
+                                  {formatDateFr(ex.dateDepart)} · CA lignes{' '}
                                   {ca.toLocaleString('fr-FR')} FCFA · ID …{shortId}
                                 </span>
                               </div>
@@ -1381,7 +1381,7 @@ export default function Invoices() {
                                   {ex.origine} → {ex.destination}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                  {new Date(ex.dateDepart).toLocaleDateString('fr-FR')} · CA lignes{' '}
+                                  {formatDateFr(ex.dateDepart)} · CA lignes{' '}
                                   {ca.toLocaleString('fr-FR')} FCFA · ID …{shortId}
                                 </span>
                               </div>
@@ -1453,12 +1453,12 @@ export default function Invoices() {
                         <div className="space-y-2">
                           <div>
                             <span className="text-xs font-semibold text-muted-foreground">{EMOJI.date} Date de départ</span>
-                            <p className="text-sm font-medium mt-1">{new Date(selectedTrip.dateDepart).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                            <p className="text-sm font-medium mt-1">{formatDateFr(selectedTrip.dateDepart, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
                           </div>
                           {selectedTrip.dateArrivee && (
                             <div>
                               <span className="text-xs font-semibold text-muted-foreground">{EMOJI.date} Date d'arrivée</span>
-                              <p className="text-sm font-medium mt-1">{new Date(selectedTrip.dateArrivee).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                              <p className="text-sm font-medium mt-1">{formatDateFr(selectedTrip.dateArrivee, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
                             </div>
                           )}
                           {!selectedTrip.dateArrivee && (
@@ -1609,12 +1609,12 @@ export default function Invoices() {
                       <div className="grid sm:grid-cols-2 gap-2 text-sm">
                         <div>
                           <span className="text-muted-foreground">Départ</span>
-                          <p className="font-medium">{new Date(ex.dateDepart).toLocaleDateString('fr-FR')}</p>
+                          <p className="font-medium">{formatDateFr(ex.dateDepart)}</p>
                         </div>
                         {ex.dateArrivee && (
                           <div>
                             <span className="text-muted-foreground">Arrivée</span>
-                            <p className="font-medium">{new Date(ex.dateArrivee).toLocaleDateString('fr-FR')}</p>
+                            <p className="font-medium">{formatDateFr(ex.dateArrivee)}</p>
                           </div>
                         )}
                         {driver && (
@@ -2285,7 +2285,7 @@ export default function Invoices() {
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap align-top">{new Date(invoice.dateCreation).toLocaleDateString('fr-FR')}</TableCell>
+                      <TableCell className="whitespace-nowrap align-top">{formatDateFr(invoice.dateCreation)}</TableCell>
                       <TableCell className="text-right align-top">
                         <div className="font-bold text-primary">
                           {invoice.montantTTC.toLocaleString('fr-FR')} FCFA
@@ -2462,7 +2462,7 @@ export default function Invoices() {
                         </h1>
                         <p className="text-sm text-slate-600 mt-2">
                           Date d’émission :{' '}
-                          {new Date(selectedInvoice.dateCreation).toLocaleDateString('fr-FR', {
+                          {formatDateFr(selectedInvoice.dateCreation, {
                             weekday: 'long',
                             day: 'numeric',
                             month: 'long',
@@ -2585,7 +2585,7 @@ export default function Invoices() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Date de la dépense:</span>
-                            <span className="font-medium">{new Date(expense.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                            <span className="font-medium">{formatDateFr(expense.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
                           </div>
                         </div>
                       </div>
@@ -2731,12 +2731,12 @@ export default function Invoices() {
                           )}
                           <div className="flex justify-between gap-4">
                             <span className="text-muted-foreground shrink-0">Départ</span>
-                            <span className="font-medium text-right">{new Date(parcelEx.dateDepart).toLocaleDateString('fr-FR')}</span>
+                            <span className="font-medium text-right">{formatDateFr(parcelEx.dateDepart)}</span>
                           </div>
                           {parcelEx.dateArrivee?.trim() && (
                             <div className="flex justify-between gap-4">
                               <span className="text-muted-foreground shrink-0">Arrivée</span>
-                              <span className="font-medium text-right">{new Date(parcelEx.dateArrivee).toLocaleDateString('fr-FR')}</span>
+                              <span className="font-medium text-right">{formatDateFr(parcelEx.dateArrivee)}</span>
                             </div>
                           )}
                           {parcelEx.description?.trim() && (
@@ -2819,12 +2819,12 @@ export default function Invoices() {
                         )}
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Date de départ:</span>
-                          <span className="font-medium">{new Date(trip.dateDepart).toLocaleDateString('fr-FR')}</span>
+                          <span className="font-medium">{formatDateFr(trip.dateDepart)}</span>
                         </div>
                         {trip.dateArrivee && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Date d'arrivée:</span>
-                            <span className="font-medium">{new Date(trip.dateArrivee).toLocaleDateString('fr-FR')}</span>
+                            <span className="font-medium">{formatDateFr(trip.dateArrivee)}</span>
                           </div>
                         )}
                       </div>
@@ -2939,7 +2939,7 @@ export default function Invoices() {
                     <div className="invoice-print-panel space-y-2 text-sm border rounded-lg p-4 bg-muted/30 border-border">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Date de création:</span>
-                        <span className="font-medium">{new Date(selectedInvoice.dateCreation).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                        <span className="font-medium">{formatDateFr(selectedInvoice.dateCreation, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
                       </div>
                       {selectedInvoice.modePaiement && (
                         <div className="flex justify-between">
@@ -2950,7 +2950,7 @@ export default function Invoices() {
                       {selectedInvoice.datePaiement && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Date de paiement:</span>
-                          <span className="font-medium">{new Date(selectedInvoice.datePaiement).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                          <span className="font-medium">{formatDateFr(selectedInvoice.datePaiement, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
                         </div>
                       )}
                       <div className="flex justify-between">

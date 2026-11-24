@@ -17,6 +17,27 @@ export function parseDateMs(s: string | undefined | null): number {
   return Number.isNaN(t) ? 0 : t;
 }
 
+/**
+ * Formate une date ISO (YYYY-MM-DD ou avec T…Z) en format français (JJ/MM/AAAA)
+ * sans décalage de fuseau horaire. Accepte aussi des options Intl.
+ */
+export function formatDateFr(
+  s: string | undefined | null,
+  options?: Intl.DateTimeFormatOptions,
+): string {
+  if (!s) return '—';
+  const dateOnly = String(s).trim().split('T')[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+    const [y, m, d] = dateOnly.split('-').map(Number);
+    const local = new Date(y, m - 1, d);
+    if (Number.isNaN(local.getTime())) return '—';
+    return local.toLocaleDateString('fr-FR', options);
+  }
+  const t = Date.parse(s);
+  if (Number.isNaN(t)) return '—';
+  return new Date(t).toLocaleDateString('fr-FR', options);
+}
+
 /** Date du jour au format YYYY-MM-DD en heure locale (évite le décalage de toISOString). */
 export function localTodayIso(): string {
   const d = new Date();

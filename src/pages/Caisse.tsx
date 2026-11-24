@@ -64,7 +64,7 @@ import {
   isVersementIndirect,
   type PaymentModeFamily,
 } from '@/lib/payment-modes';
-import { frCollator, parseDateMs, stableSort } from '@/lib/list-sort';
+import { frCollator, formatDateFr, parseDateMs, stableSort } from '@/lib/list-sort';
 import {
   type OperationDiverse,
   type OdPartie,
@@ -997,7 +997,7 @@ export default function Caisse() {
       fileName: `caisse_${new Date().toISOString().split('T')[0]}.xlsx`,
       filtersDescription: caisseExportFiltersDescription,
       columns: [
-        { header: 'Date', value: (t) => new Date(t.date).toLocaleDateString('fr-FR') },
+        { header: 'Date', value: (t) => formatDateFr(t.date) },
         { header: 'Type', value: (t) => t.type === 'entree' ? 'Entrée' : 'Sortie' },
         { header: 'Entrée (FCFA)', value: (t) => t.entree ?? '' },
         { header: 'Sortie (FCFA)', value: (t) => t.sortie ?? '' },
@@ -1029,7 +1029,7 @@ export default function Caisse() {
       accentColor: '#059669',
       totals: pdfExportTotals,
       columns: [
-        { header: 'Date', value: (t) => `${EMOJI.date} ${new Date(t.date).toLocaleDateString('fr-FR')}` },
+        { header: 'Date', value: (t) => `${EMOJI.date} ${formatDateFr(t.date)}` },
         { header: 'Type', value: (t) => t.type === 'entree' ? `${EMOJI.entree} Entrée` : `${EMOJI.sortie} Sortie`, cellStyle: (t) => t.type === 'entree' ? 'positive' : 'negative' },
         {
           header: 'Entrée (FCFA)',
@@ -1772,7 +1772,7 @@ export default function Caisse() {
                 ) : (
                   sortedTransactionRows.map(t => (
                     <TableRow key={t.id}>
-                      <TableCell>{new Date(t.date).toLocaleDateString('fr-FR')}</TableCell>
+                      <TableCell>{formatDateFr(t.date)}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap items-center gap-1">
                           <Badge variant={t.type === 'entree' ? 'default' : 'secondary'}>

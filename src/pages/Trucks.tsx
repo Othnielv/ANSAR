@@ -22,7 +22,7 @@ import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { exportToExcel, exportToPrintablePDFWithDetails, type ExportDetailBlock } from '@/lib/export-utils';
 import { EMOJI } from '@/lib/emoji-palette';
-import { frCollator, parseDateMs, stableSort } from '@/lib/list-sort';
+import { frCollator, formatDateFr, parseDateMs, stableSort } from '@/lib/list-sort';
 import { ListSortSelect } from '@/components/ListSortSelect';
 import {
   listDeliveriesForTruck,
@@ -114,10 +114,7 @@ function exportShortImmat(truck: Truck): string {
 }
 
 function fmtExportDate(value?: string | null): string {
-  if (!value?.trim()) return '—';
-  const ms = Date.parse(value);
-  if (!Number.isFinite(ms)) return value;
-  return new Date(ms).toLocaleDateString('fr-FR');
+  return formatDateFr(value);
 }
 
 function loadingClientsLabel(l: SupplierLoading): string {
@@ -626,7 +623,7 @@ export default function Trucks({ flotteScope = 'ansar' }: { flotteScope?: TruckF
         { header: 'Chiffre d’affaires (FCFA)', value: (t) => calculateTruckStats(t.id, trips, expenses, invoices, parcelExpeditions, clientDeliveries).revenue },
         { header: 'Dépenses (FCFA)', value: (t) => calculateTruckStats(t.id, trips, expenses, invoices, parcelExpeditions, clientDeliveries).expenses },
         { header: 'Bénéfice (FCFA)', value: (t) => calculateTruckStats(t.id, trips, expenses, invoices, parcelExpeditions, clientDeliveries).profit },
-        { header: 'Mise en circulation', value: (t) => new Date(t.dateMiseEnCirculation).toLocaleDateString('fr-FR') },
+        { header: 'Mise en circulation', value: (t) => formatDateFr(t.dateMiseEnCirculation) },
       ],
       rows: sortedTrucks,
     });
@@ -1378,7 +1375,7 @@ export default function Trucks({ flotteScope = 'ansar' }: { flotteScope?: TruckF
                       );
                     })()}
                   </TableCell>
-                  <TableCell>{new Date(truck.dateMiseEnCirculation).toLocaleDateString('fr-FR')}</TableCell>
+                  <TableCell>{formatDateFr(truck.dateMiseEnCirculation)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end flex-wrap gap-1.5 sm:gap-2">
                       <Button

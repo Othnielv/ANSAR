@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { formatDateFr } from '@/lib/list-sort';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -173,7 +174,7 @@ export default function OperationsDiverses() {
       title: `Opérations Diverses${activePartie !== 'all' ? ` — ${activePartie}` : ''}`,
       fileName: `od_${new Date().toISOString().split('T')[0]}.xlsx`,
       columns: [
-        { header: 'Date', value: (o) => new Date(o.date).toLocaleDateString('fr-FR') },
+        { header: 'Date', value: (o) => formatDateFr(o.date) },
         { header: 'Compte', value: (o) => o.partie },
         { header: 'Type', value: (o) => (o.type === 'entree' ? 'Entrée' : 'Sortie') },
         { header: 'Entrée (FCFA)', value: (o) => (o.type === 'entree' ? o.montant : '') },
@@ -198,7 +199,7 @@ export default function OperationsDiverses() {
       accentColor: '#4f46e5',
       totals: pdfTotals,
       columns: [
-        { header: 'Date', value: (o) => new Date(o.date).toLocaleDateString('fr-FR') },
+        { header: 'Date', value: (o) => formatDateFr(o.date) },
         { header: 'Compte', value: (o) => o.partie },
         { header: 'Type', value: (o) => (o.type === 'entree' ? 'Entrée' : 'Sortie'), cellStyle: (o) => (o.type === 'entree' ? 'positive' : 'negative') },
         { header: 'Entrée (FCFA)', value: (o) => (o.type === 'entree' ? `+${o.montant.toLocaleString('fr-FR')}` : '—'), cellStyle: (o) => (o.type === 'entree' ? 'positive' : undefined) },
@@ -873,7 +874,7 @@ export default function OperationsDiverses() {
                     {filteredOps.map((op) => (
                       <TableRow key={op.id}>
                         <TableCell className="whitespace-nowrap text-sm">
-                          {new Date(op.date).toLocaleDateString('fr-FR')}
+                          {formatDateFr(op.date)}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={PARTIE_COLORS[op.partie]}>

@@ -38,7 +38,7 @@ import { Badge } from '@/components/ui/badge';
 import { ClipboardList, Plus, Edit, Trash2, Search, Loader2, X, Users, ChevronDown, ChevronUp, Train, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { exportToExcel, exportToPrintablePDF } from '@/lib/export-utils';
-import { frCollator, parseDateMs, stableSort } from '@/lib/list-sort';
+import { frCollator, formatDateFr, parseDateMs, stableSort } from '@/lib/list-sort';
 import {
   type CamrailOperation,
   createCamrailOperation,
@@ -63,8 +63,7 @@ function todayIso(): string {
 }
 
 function formatOptionalDate(value?: string): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('fr-FR');
+  return formatDateFr(value);
 }
 
 function truckOptionLabel(t: Truck) {
@@ -685,7 +684,7 @@ export default function Camrail() {
   const exportColumns = [
     {
       header: 'Date',
-      value: (op: CamrailOperation) => new Date(op.date).toLocaleDateString('fr-FR'),
+      value: (op: CamrailOperation) => formatDateFr(op.date),
     },
     {
       header: 'Camion',
@@ -710,14 +709,14 @@ export default function Camrail() {
       header: 'Date de chargement',
       value: (op: CamrailOperation) =>
         op.dateChargement
-          ? new Date(op.dateChargement).toLocaleDateString('fr-FR')
+          ? formatDateFr(op.dateChargement)
           : '',
     },
     {
       header: 'Date de livraison',
       value: (op: CamrailOperation) =>
         op.dateLivraison
-          ? new Date(op.dateLivraison).toLocaleDateString('fr-FR')
+          ? formatDateFr(op.dateLivraison)
           : '',
     },
     {
@@ -1644,7 +1643,7 @@ export default function Camrail() {
                   sorted.map((op) => (
                     <TableRow key={op.id}>
                       <TableCell className="whitespace-nowrap">
-                        {new Date(op.date).toLocaleDateString('fr-FR')}
+                        {formatDateFr(op.date)}
                       </TableCell>
                       <TableCell>{formatCamrailCamionLabel(op)}</TableCell>
                       <TableCell className="tabular-nums whitespace-nowrap">

@@ -60,7 +60,7 @@ import {
 } from '@/contexts/AppContext';
 import { exportToExcel, exportToPrintablePDF } from '@/lib/export-utils';
 import { EMOJI } from '@/lib/emoji-palette';
-import { frCollator, parseDateMs, stableSort } from '@/lib/list-sort';
+import { frCollator, formatDateFr, parseDateMs, stableSort } from '@/lib/list-sort';
 import { ListSortSelect } from '@/components/ListSortSelect';
 import CityPicker, { CAMEROON_CITIES } from '@/components/CityPicker';
 import { formatTripStatusFr } from '@/lib/sync-utils';
@@ -103,9 +103,7 @@ function formatFcfa(n: number): string {
 }
 
 function dateLocaleOrDash(iso?: string): string {
-  if (!iso?.trim()) return '—';
-  const t = new Date(iso).getTime();
-  return Number.isNaN(t) ? '—' : new Date(iso).toLocaleDateString('fr-FR');
+  return formatDateFr(iso);
 }
 
 function sumExpeditionMontant(lots: ParcelExpeditionLot[]): number {
@@ -1350,7 +1348,7 @@ export default function ParcelShipping() {
                         </p>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
-                        {new Date(ex.dateDepart).toLocaleDateString('fr-FR')}
+                        {formatDateFr(ex.dateDepart)}
                       </TableCell>
                       <TableCell className="text-sm">{driverLabel(ex.chauffeurId)}</TableCell>
                       <TableCell className="text-sm font-mono">

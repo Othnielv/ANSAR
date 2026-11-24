@@ -15,7 +15,7 @@ import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { exportToExcel, exportToPrintablePDF } from '@/lib/export-utils';
 import { EMOJI } from '@/lib/emoji-palette';
-import { frCollator, stableSort } from '@/lib/list-sort';
+import { frCollator, formatDateFr, stableSort } from '@/lib/list-sort';
 import { ListSortSelect } from '@/components/ListSortSelect';
 
 const DRIVER_SORT_OPTIONS = [
@@ -361,7 +361,7 @@ export default function Drivers() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const currentDate = new Date().toLocaleDateString('fr-FR', {
+    const currentDate = formatDateFr(new Date().toISOString(), {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -387,7 +387,7 @@ export default function Drivers() {
       const transactionsRows = allTransactions.length > 0 
         ? allTransactions.map((t, idx) => `
             <tr style="background-color: ${idx % 2 === 0 ? '#faf5ff' : '#ffffff'};">
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${new Date(t.date).toLocaleDateString('fr-FR')}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${formatDateFr(t.date)}</td>
               <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">
                 <span style="padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; ${t.type === 'apport' ? 'background: #dcfce7; color: #166534;' : 'background: #fee2e2; color: #991b1b;'}">
                   ${t.type === 'apport' ? `${EMOJI.entree} Apport` : `${EMOJI.sortie} Sortie`}
@@ -407,7 +407,7 @@ export default function Drivers() {
               .map(
                 (trip, idx) => `
             <tr style="background-color: ${idx % 2 === 0 ? '#f8fafc' : '#ffffff'};">
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${new Date(trip.dateDepart).toLocaleDateString('fr-FR')}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${formatDateFr(trip.dateDepart)}</td>
               <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${escHtml(trip.origine)} → ${escHtml(trip.destination)}</td>
               <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${escHtml(trip.client || '—')}</td>
               <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">
@@ -1171,7 +1171,7 @@ export default function Drivers() {
                                 {transaction.description}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {new Date(transaction.date).toLocaleDateString('fr-FR')}
+                                {formatDateFr(transaction.date)}
                                 {transaction.source !== 'manuel' && (
                                   <span className="ml-1 text-[10px] opacity-75">
                                     ({transaction.source === 'trajet' ? 'Trajet' : 'Dépense'})

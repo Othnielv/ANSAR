@@ -77,7 +77,7 @@ import {
 } from '@/lib/loading-receipt-pdf-html';
 import { openPdfPrintWindow } from '@/lib/pdf-print';
 import { EMOJI } from '@/lib/emoji-palette';
-import { frCollator, stableSort } from '@/lib/list-sort';
+import { frCollator, formatDateFr, stableSort } from '@/lib/list-sort';
 import { truckMissionLabel } from '@/lib/trip-mission-context';
 import type { SupplierLoadingAssignmentPayload } from '@/lib/api';
 import {
@@ -2121,7 +2121,7 @@ export default function Chargements() {
                             const t = Date.parse(o.dateCommande);
                             return Number.isNaN(t)
                               ? o.dateCommande
-                              : new Date(t).toLocaleDateString('fr-FR');
+                              : formatDateFr(o.dateCommande);
                           })();
                           return (
                             <button

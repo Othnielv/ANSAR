@@ -28,7 +28,7 @@ import {
   type SupplierLoadingRecapRow,
 } from '@/lib/supplier-ledger';
 import { exportToExcel, exportToPrintablePDF } from '@/lib/export-utils';
-import { frCollator, stableSort } from '@/lib/list-sort';
+import { frCollator, formatDateFr, stableSort } from '@/lib/list-sort';
 import { BookOpen, Container, Loader2, RotateCcw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -38,11 +38,6 @@ function formatFcfa(n: number): string {
   return Math.round(n).toLocaleString('fr-FR');
 }
 
-function formatDateFr(iso: string): string {
-  if (!iso) return '—';
-  const d = new Date(iso.includes('T') ? iso : `${iso}T12:00:00`);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('fr-FR');
-}
 
 function qltiTone(qlti: string): string {
   const q = qlti.toUpperCase();
