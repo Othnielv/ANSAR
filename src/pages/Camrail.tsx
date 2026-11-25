@@ -159,6 +159,25 @@ function CatalogOrAutreField({
   );
 }
 
+type WagonDisponible = {
+  wagon: string;
+  tripId: string;
+  atc: string;
+  quantiteTotal: number;
+  quantiteDispatchee: number;
+  quantiteRestante: number;
+  dateDepart: string;
+  origine: string;
+  destination: string;
+  camionNom: string;
+  camionImmat: string;
+  typeProduit: string;
+  transporteur: string;
+  destinataire: string;
+};
+
+type DispatchLine = { destinataire: string; quantite: number | undefined };
+
 type FormState = {
   date: string;
   camionNom: string;
@@ -228,6 +247,12 @@ export default function Camrail() {
   const [newTransporteurName, setNewTransporteurName] = useState('');
   const [editingTransporteurId, setEditingTransporteurId] = useState<string | null>(null);
   const [editingTransporteurName, setEditingTransporteurName] = useState('');
+
+  const [dispatchDialogOpen, setDispatchDialogOpen] = useState(false);
+  const [dispatchWagon, setDispatchWagon] = useState<WagonDisponible | null>(null);
+  const [dispatchLines, setDispatchLines] = useState<DispatchLine[]>([
+    { destinataire: '', quantite: undefined },
+  ]);
 
   const qualityLabels = useMemo(
     () => uniqueSortedStrings(merchandiseQualities.map((q) => q.libelle)),
@@ -327,23 +352,6 @@ export default function Camrail() {
     () => uniqueSortedStrings(operations.map((op) => op.numeroWagon)),
     [operations],
   );
-
-  type WagonDisponible = {
-    wagon: string;
-    tripId: string;
-    atc: string;
-    quantiteTotal: number;
-    quantiteDispatchee: number;
-    quantiteRestante: number;
-    dateDepart: string;
-    origine: string;
-    destination: string;
-    camionNom: string;
-    camionImmat: string;
-    typeProduit: string;
-    transporteur: string;
-    destinataire: string;
-  };
 
   const wagonsDisponibles = useMemo<WagonDisponible[]>(() => {
     const wagonTrips = trips.filter((t) => t.numeroWagon?.trim());
@@ -571,24 +579,63 @@ export default function Camrail() {
   };
 
   const dispatchFromWagon = (w: WagonDisponible) => {
-    setEditing(null);
-    setForm({
-      date: todayIso(),
-      camionNom: w.camionNom,
-      camionImmatriculation: w.camionImmat,
-      quantite: w.quantiteRestante > 0 ? w.quantiteRestante : undefined,
-      typeProduit: w.typeProduit,
-      referenceAtc: w.atc,
-      atComplement: undefined,
-      destinataire: w.destinataire,
-      dateChargement: w.dateDepart?.split('T')[0] || '',
-      dateLivraison: '',
-      numeroWagon: w.wagon,
-      commentaires: `Dispatch wagon ${w.wagon} — ${w.origine} → ${w.destination}`,
-      transporteur: w.transporteur,
+    setDispatchWagon(w);
+    setDispatchLines([{ destinataire: '', quantite: undefined }]);
+    setDispatchDialogOpen(true);
+  };
+
+  const dispatchTotalAllocated = dispatchLines.reduce(
+    (s, l) => s + (Number(l.quantite) || 0),
+    0,
+  );
+
+  const handleMultiDispatch = async () => {
+    if (!dispatchWagon) return;
+    const w = dispatchWagon;
+    const validLines = dispatchLines.filter(
+      (l) => l.destinataire.trim() && Number(l.quantite) > 0,
+    );
+    if (validLines.length === 0) {
+      toast.error('Ajoutez au moins un client avec une quantité.');
+      return;
+    }
+    const total = validLines.reduce((s, l) => s + (Number(l.quantite) || 0), 0);
+    if (total > w.quantiteRestante) {
+      toast.error(
+        `Quantité totale (${total}) dépasse le restant (${w.quantiteRestante}).`,
+      );
+      return;
+    }
+    await withGuard(async () => {
+      try {
+        for (const line of validLines) {
+          await createCamrailOperation({
+            date: todayIso(),
+            camionNom: w.camionNom || undefined,
+            camionImmatriculation: w.camionImmat || undefined,
+            quantite: Number(line.quantite),
+            typeProduit: w.typeProduit || undefined,
+            referenceAtc: w.atc || undefined,
+            destinataire: line.destinataire.trim(),
+            dateChargement: w.dateDepart?.split('T')[0] || undefined,
+            numeroWagon: w.wagon,
+            transporteur: w.transporteur || undefined,
+            commentaires: `Dispatch wagon ${w.wagon} → ${line.destinataire.trim()}`,
+            utilisateur: user?.login || 'system',
+          });
+        }
+        await loadAll();
+        setDispatchDialogOpen(false);
+        setDispatchWagon(null);
+        toast.success(
+          `${validLines.length} dispatch${validLines.length > 1 ? 's' : ''} enregistré${validLines.length > 1 ? 's' : ''}.`,
+        );
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : 'Erreur lors du dispatch.',
+        );
+      }
     });
-    setFormKey((k) => k + 1);
-    setDialogOpen(true);
   };
 
   const openEdit = (op: CamrailOperation) => {
@@ -1302,6 +1349,140 @@ export default function Camrail() {
           </CardContent>
         </Card>
       )}
+
+      {/* Dialog dispatch multi-client */}
+      <Dialog open={dispatchDialogOpen} onOpenChange={setDispatchDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Dispatcher wagon {dispatchWagon?.wagon}
+            </DialogTitle>
+          </DialogHeader>
+          {dispatchWagon && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-sky-200/80 bg-sky-50/50 dark:bg-sky-950/20 dark:border-sky-800/50 p-3 text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Trajet</span>
+                  <span>{dispatchWagon.origine} → {dispatchWagon.destination}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">ATC</span>
+                  <span>{dispatchWagon.atc || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Qté totale</span>
+                  <span className="font-semibold">{dispatchWagon.quantiteTotal.toLocaleString('fr-FR')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Déjà dispatché</span>
+                  <span>{dispatchWagon.quantiteDispatchee.toLocaleString('fr-FR')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Restant</span>
+                  <span className="font-semibold text-green-600 dark:text-green-400">
+                    {dispatchWagon.quantiteRestante.toLocaleString('fr-FR')}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">Répartition par client</Label>
+                {dispatchLines.map((line, idx) => (
+                  <div key={idx} className="flex gap-2 items-end">
+                    <div className="flex-1 space-y-1">
+                      {idx === 0 && <Label className="text-xs text-muted-foreground">Client / Destinataire</Label>}
+                      <ThirdPartyPicker
+                        options={clients}
+                        value={clients.find((c) => c.nom === line.destinataire)?.id ?? ''}
+                        onValueChange={(id) => {
+                          const tp = clients.find((c) => c.id === id);
+                          setDispatchLines((prev) =>
+                            prev.map((l, i) =>
+                              i === idx ? { ...l, destinataire: tp?.nom ?? '' } : l,
+                            ),
+                          );
+                        }}
+                        placeholder="Choisir un client…"
+                        searchPlaceholder="Nom…"
+                      />
+                    </div>
+                    <div className="w-28 space-y-1">
+                      {idx === 0 && <Label className="text-xs text-muted-foreground">Quantité</Label>}
+                      <NumberInput
+                        value={line.quantite}
+                        onChange={(q) =>
+                          setDispatchLines((prev) =>
+                            prev.map((l, i) =>
+                              i === idx ? { ...l, quantite: q } : l,
+                            ),
+                          )
+                        }
+                        min={0}
+                        allowEmpty
+                        placeholder="Qté"
+                      />
+                    </div>
+                    {dispatchLines.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 p-0 text-red-500"
+                        onClick={() =>
+                          setDispatchLines((prev) => prev.filter((_, i) => i !== idx))
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setDispatchLines((prev) => [
+                      ...prev,
+                      { destinataire: '', quantite: undefined },
+                    ])
+                  }
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Ajouter un client
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between text-sm border-t pt-3">
+                <span className="text-muted-foreground">
+                  Total alloué : <span className="font-semibold">{dispatchTotalAllocated.toLocaleString('fr-FR')}</span>
+                  {' / '}
+                  {dispatchWagon.quantiteRestante.toLocaleString('fr-FR')} restant
+                </span>
+                {dispatchTotalAllocated > dispatchWagon.quantiteRestante && (
+                  <span className="text-red-500 text-xs font-medium">Dépassement !</span>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDispatchDialogOpen(false)}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleMultiDispatch}
+                  disabled={isSubmitting || dispatchTotalAllocated === 0 || dispatchTotalAllocated > dispatchWagon.quantiteRestante}
+                >
+                  {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Dispatcher ({dispatchLines.filter((l) => l.destinataire.trim() && Number(l.quantite) > 0).length} ligne{dispatchLines.filter((l) => l.destinataire.trim() && Number(l.quantite) > 0).length > 1 ? 's' : ''})
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardContent className="pt-6 space-y-4">
