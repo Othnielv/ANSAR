@@ -812,7 +812,10 @@ export default function Trips() {
             );
           }
         }
-        if (formData.client === 'CAMRAIL' && formData.numeroWagon?.trim()) {
+        const isCamrailTrip = participantsLint.some(
+          (p) => p.libelle.trim().toUpperCase() === 'CAMRAIL',
+        );
+        if (isCamrailTrip && formData.numeroWagon?.trim()) {
           try {
             const truck = trucks.find((t) => t.id === formData.tracteurId || t.id === formData.remorqueuseId);
             await createCamrailOperation({
@@ -2178,65 +2181,51 @@ export default function Trips() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-sky-200/80 dark:border-sky-900/50 bg-sky-50/40 dark:bg-sky-950/20 p-3 space-y-3">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.client === 'CAMRAIL'}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setFormData({ ...formData, client: 'CAMRAIL' });
-                      } else {
-                        setFormData({ ...formData, client: '', numeroWagon: '', transporteur: '' });
-                      }
-                    }}
-                    className="h-4 w-4 rounded border-sky-400 text-sky-600 focus:ring-sky-500"
-                  />
-                  <span className="text-sm font-semibold text-sky-700 dark:text-sky-300">
-                    Client CAMRAIL
-                  </span>
-                </label>
-                {formData.client === 'CAMRAIL' && (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <Label htmlFor="trip-numero-wagon">N° Wagon *</Label>
-                        <Input
-                          id="trip-numero-wagon"
-                          value={formData.numeroWagon}
-                          onChange={(e) => setFormData({ ...formData, numeroWagon: e.target.value })}
-                          placeholder="Ex: W-12345"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="trip-transporteur">Transporteur *</Label>
-                        <Select
-                          value={formData.transporteur}
-                          onValueChange={(v) => setFormData({ ...formData, transporteur: v })}
-                        >
-                          <SelectTrigger id="trip-transporteur">
-                            <SelectValue placeholder="Choisir un transporteur" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {thirdParties
-                              .filter((tp) => tp.type === 'transporteur' && tp.nom.trim())
-                              .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
-                              .map((tp) => (
-                                <SelectItem key={tp.id} value={tp.nom}>
-                                  {tp.nom}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+              {formData.clientParticipants.some(
+                (p) => p.libelle.trim().toUpperCase() === 'CAMRAIL',
+              ) && (
+                <div className="rounded-lg border border-sky-200/80 dark:border-sky-900/50 bg-sky-50/40 dark:bg-sky-950/20 p-3 space-y-3">
+                  <p className="text-xs font-semibold text-sky-700 dark:text-sky-300 uppercase tracking-wide">
+                    Client CAMRAIL — Informations wagon
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="trip-numero-wagon">N° Wagon *</Label>
+                      <Input
+                        id="trip-numero-wagon"
+                        value={formData.numeroWagon}
+                        onChange={(e) => setFormData({ ...formData, numeroWagon: e.target.value })}
+                        placeholder="Ex: W-12345"
+                        required
+                      />
                     </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Le wagon sera disponible pour dispatch dans l'ecran Camrail.
-                    </p>
-                  </>
-                )}
-              </div>
+                    <div>
+                      <Label htmlFor="trip-transporteur">Transporteur *</Label>
+                      <Select
+                        value={formData.transporteur}
+                        onValueChange={(v) => setFormData({ ...formData, transporteur: v })}
+                      >
+                        <SelectTrigger id="trip-transporteur">
+                          <SelectValue placeholder="Choisir un transporteur" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {thirdParties
+                            .filter((tp) => tp.type === 'transporteur' && tp.nom.trim())
+                            .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+                            .map((tp) => (
+                              <SelectItem key={tp.id} value={tp.nom}>
+                                {tp.nom}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Le wagon sera disponible pour dispatch dans l'ecran Camrail.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="description">Description (optionnel)</Label>
