@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/table';
 import { ListSortSelect } from '@/components/ListSortSelect';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Plus, Edit, Trash2, Search, Loader2, X, Users, ChevronDown, ChevronUp, Train, ArrowRight } from 'lucide-react';
+import { ClipboardList, Plus, Edit, Trash2, Search, Loader2, X, Users, ChevronDown, ChevronUp, Train, ArrowRight, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { exportToExcel, exportToPrintablePDF } from '@/lib/export-utils';
 import { frCollator, formatDateFr, parseDateMs, stableSort } from '@/lib/list-sort';
@@ -250,6 +250,7 @@ export default function Camrail() {
 
   const [dispatchDialogOpen, setDispatchDialogOpen] = useState(false);
   const [dispatchWagon, setDispatchWagon] = useState<WagonDisponible | null>(null);
+  const [dispatchSourceOp, setDispatchSourceOp] = useState<CamrailOperation | null>(null);
   const [dispatchLines, setDispatchLines] = useState<DispatchLine[]>([
     { destinataire: '', quantite: undefined },
   ]);
@@ -580,6 +581,14 @@ export default function Camrail() {
 
   const dispatchFromWagon = (w: WagonDisponible) => {
     setDispatchWagon(w);
+    setDispatchSourceOp(null);
+    setDispatchLines([{ destinataire: '', quantite: undefined }]);
+    setDispatchDialogOpen(true);
+  };
+
+  const dispatchFromOperation = (op: CamrailOperation) => {
+    setDispatchWagon(null);
+    setDispatchSourceOp(op);
     setDispatchLines([{ destinataire: '', quantite: undefined }]);
     setDispatchDialogOpen(true);
   };
@@ -589,9 +598,19 @@ export default function Camrail() {
     0,
   );
 
+  const dispatchMaxQty = dispatchWagon
+    ? dispatchWagon.quantiteRestante
+    : dispatchSourceOp
+      ? dispatchSourceOp.quantite
+      : 0;
+
+  const dispatchLabel = dispatchWagon
+    ? `Wagon ${dispatchWagon.wagon}`
+    : dispatchSourceOp
+      ? `${dispatchSourceOp.destinataire || 'Opération'} — ${dispatchSourceOp.quantite} sacs`
+      : '';
+
   const handleMultiDispatch = async () => {
-    if (!dispatchWagon) return;
-    const w = dispatchWagon;
     const validLines = dispatchLines.filter(
       (l) => l.destinataire.trim() && Number(l.quantite) > 0,
     );
@@ -600,33 +619,62 @@ export default function Camrail() {
       return;
     }
     const total = validLines.reduce((s, l) => s + (Number(l.quantite) || 0), 0);
-    if (total > w.quantiteRestante) {
+    if (total > dispatchMaxQty) {
       toast.error(
-        `Quantité totale (${total}) dépasse le restant (${w.quantiteRestante}).`,
+        `Quantité totale (${total}) dépasse le disponible (${dispatchMaxQty}).`,
       );
       return;
     }
     await withGuard(async () => {
       try {
-        for (const line of validLines) {
-          await createCamrailOperation({
-            date: todayIso(),
-            camionNom: w.camionNom || undefined,
-            camionImmatriculation: w.camionImmat || undefined,
-            quantite: Number(line.quantite),
-            typeProduit: w.typeProduit || undefined,
-            referenceAtc: w.atc || undefined,
-            destinataire: line.destinataire.trim(),
-            dateChargement: w.dateDepart?.split('T')[0] || undefined,
-            numeroWagon: w.wagon,
-            transporteur: w.transporteur || undefined,
-            commentaires: `Dispatch wagon ${w.wagon} → ${line.destinataire.trim()}`,
-            utilisateur: user?.login || 'system',
-          });
+        if (dispatchWagon) {
+          const w = dispatchWagon;
+          for (const line of validLines) {
+            await createCamrailOperation({
+              date: todayIso(),
+              camionNom: w.camionNom || undefined,
+              camionImmatriculation: w.camionImmat || undefined,
+              quantite: Number(line.quantite),
+              typeProduit: w.typeProduit || undefined,
+              referenceAtc: w.atc || undefined,
+              destinataire: line.destinataire.trim(),
+              dateChargement: w.dateDepart?.split('T')[0] || undefined,
+              numeroWagon: w.wagon,
+              transporteur: w.transporteur || undefined,
+              commentaires: `Dispatch wagon ${w.wagon} → ${line.destinataire.trim()}`,
+              utilisateur: user?.login || 'system',
+            });
+          }
+        } else if (dispatchSourceOp) {
+          const op = dispatchSourceOp;
+          const remaining = op.quantite - total;
+          if (remaining > 0) {
+            await updateCamrailOperation(op.id, { quantite: remaining });
+          } else {
+            await deleteCamrailOperation(op.id);
+          }
+          for (const line of validLines) {
+            await createCamrailOperation({
+              date: op.date,
+              camionNom: op.camionNom || undefined,
+              camionImmatriculation: op.camionImmatriculation || undefined,
+              quantite: Number(line.quantite),
+              typeProduit: op.typeProduit || undefined,
+              referenceAtc: op.referenceAtc || undefined,
+              destinataire: line.destinataire.trim(),
+              dateChargement: op.dateChargement || undefined,
+              dateLivraison: op.dateLivraison || undefined,
+              numeroWagon: op.numeroWagon || undefined,
+              transporteur: op.transporteur || undefined,
+              commentaires: `Dispatch → ${line.destinataire.trim()}`,
+              utilisateur: user?.login || 'system',
+            });
+          }
         }
         await loadAll();
         setDispatchDialogOpen(false);
         setDispatchWagon(null);
+        setDispatchSourceOp(null);
         toast.success(
           `${validLines.length} dispatch${validLines.length > 1 ? 's' : ''} enregistré${validLines.length > 1 ? 's' : ''}.`,
         );
@@ -1355,32 +1403,56 @@ export default function Camrail() {
         <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Dispatcher wagon {dispatchWagon?.wagon}
+              Dispatcher — {dispatchLabel}
             </DialogTitle>
           </DialogHeader>
-          {dispatchWagon && (
+          {(dispatchWagon || dispatchSourceOp) && (
             <div className="space-y-4">
               <div className="rounded-lg border border-sky-200/80 bg-sky-50/50 dark:bg-sky-950/20 dark:border-sky-800/50 p-3 text-sm space-y-1">
+                {dispatchWagon && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Trajet</span>
+                      <span>{dispatchWagon.origine} → {dispatchWagon.destination}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">ATC</span>
+                      <span>{dispatchWagon.atc || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Qté totale</span>
+                      <span className="font-semibold">{dispatchWagon.quantiteTotal.toLocaleString('fr-FR')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Déjà dispatché</span>
+                      <span>{dispatchWagon.quantiteDispatchee.toLocaleString('fr-FR')}</span>
+                    </div>
+                  </>
+                )}
+                {dispatchSourceOp && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Destinataire actuel</span>
+                      <span>{dispatchSourceOp.destinataire || '—'}</span>
+                    </div>
+                    {dispatchSourceOp.numeroWagon && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Wagon</span>
+                        <span className="font-mono">{dispatchSourceOp.numeroWagon}</span>
+                      </div>
+                    )}
+                    {dispatchSourceOp.referenceAtc && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">ATC</span>
+                        <span>{dispatchSourceOp.referenceAtc}</span>
+                      </div>
+                    )}
+                  </>
+                )}
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Trajet</span>
-                  <span>{dispatchWagon.origine} → {dispatchWagon.destination}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">ATC</span>
-                  <span>{dispatchWagon.atc || '—'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Qté totale</span>
-                  <span className="font-semibold">{dispatchWagon.quantiteTotal.toLocaleString('fr-FR')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Déjà dispatché</span>
-                  <span>{dispatchWagon.quantiteDispatchee.toLocaleString('fr-FR')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Restant</span>
+                  <span className="text-muted-foreground">Disponible</span>
                   <span className="font-semibold text-green-600 dark:text-green-400">
-                    {dispatchWagon.quantiteRestante.toLocaleString('fr-FR')}
+                    {dispatchMaxQty.toLocaleString('fr-FR')}
                   </span>
                 </div>
               </div>
@@ -1456,9 +1528,9 @@ export default function Camrail() {
                 <span className="text-muted-foreground">
                   Total alloué : <span className="font-semibold">{dispatchTotalAllocated.toLocaleString('fr-FR')}</span>
                   {' / '}
-                  {dispatchWagon.quantiteRestante.toLocaleString('fr-FR')} restant
+                  {dispatchMaxQty.toLocaleString('fr-FR')} disponible
                 </span>
-                {dispatchTotalAllocated > dispatchWagon.quantiteRestante && (
+                {dispatchTotalAllocated > dispatchMaxQty && (
                   <span className="text-red-500 text-xs font-medium">Dépassement !</span>
                 )}
               </div>
@@ -1473,7 +1545,7 @@ export default function Camrail() {
                 </Button>
                 <Button
                   onClick={handleMultiDispatch}
-                  disabled={isSubmitting || dispatchTotalAllocated === 0 || dispatchTotalAllocated > dispatchWagon.quantiteRestante}
+                  disabled={isSubmitting || dispatchTotalAllocated === 0 || dispatchTotalAllocated > dispatchMaxQty}
                 >
                   {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Dispatcher ({dispatchLines.filter((l) => l.destinataire.trim() && Number(l.quantite) > 0).length} ligne{dispatchLines.filter((l) => l.destinataire.trim() && Number(l.quantite) > 0).length > 1 ? 's' : ''})
@@ -1844,6 +1916,15 @@ export default function Camrail() {
                       {canManageFleet && (
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => dispatchFromOperation(op)}
+                              title="Dispatcher à d'autres clients"
+                            >
+                              <Share2 className="h-4 w-4" />
+                            </Button>
                             <Button
                               type="button"
                               variant="ghost"
