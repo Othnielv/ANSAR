@@ -102,6 +102,7 @@ export default function OperationsDiverses() {
     modePaiement: '',
     clientTierId: '',
     exclutRevenu: false,
+    transactionId: '',
   });
 
   useEffect(() => {
@@ -132,6 +133,7 @@ export default function OperationsDiverses() {
         (o) =>
           o.description.toLowerCase().includes(q) ||
           (o.reference || '').toLowerCase().includes(q) ||
+          (o.transactionId || '').toLowerCase().includes(q) ||
           o.partie.toLowerCase().includes(q),
       );
     }
@@ -223,6 +225,7 @@ export default function OperationsDiverses() {
       modePaiement: '',
       clientTierId: '',
       exclutRevenu: false,
+      transactionId: '',
     });
     setEditingOp(null);
   };
@@ -242,6 +245,10 @@ export default function OperationsDiverses() {
     }
     if (dialogMode === 'operation' && !formData.description.trim()) {
       toast.error('Ajoute une description.');
+      return;
+    }
+    if (formData.partie === 'Master Ansar' && !formData.transactionId.trim()) {
+      toast.error('L\'ID de transaction est obligatoire pour Master Ansar.');
       return;
     }
 
@@ -388,6 +395,7 @@ export default function OperationsDiverses() {
         modePaiement: formData.modePaiement.trim() || undefined,
         clientTierId: formData.clientTierId || undefined,
         exclutRevenu: formData.type === 'entree' && formData.exclutRevenu ? true : undefined,
+        transactionId: formData.transactionId.trim() || undefined,
       };
 
       if (editingOp) {
@@ -441,6 +449,7 @@ export default function OperationsDiverses() {
       modePaiement: op.modePaiement || '',
       clientTierId: op.clientTierId || '',
       exclutRevenu: op.type === 'entree' && Boolean(op.exclutRevenu),
+      transactionId: op.transactionId || '',
     });
     setIsDialogOpen(true);
   };
@@ -638,6 +647,22 @@ export default function OperationsDiverses() {
                 }
               />
             </div>
+
+            {formData.partie === 'Master Ansar' && (
+              <div>
+                <Label htmlFor="od-transaction-id">ID Transaction *</Label>
+                <Input
+                  id="od-transaction-id"
+                  value={formData.transactionId}
+                  onChange={(e) => setFormData({ ...formData, transactionId: e.target.value })}
+                  required
+                  placeholder="Ex: TXN-20241125-001"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Identifiant unique de la transaction Master Ansar.
+                </p>
+              </div>
+            )}
 
             {(dialogMode === 'operation' || dialogMode === 'depense') && (
               <>
@@ -867,6 +892,7 @@ export default function OperationsDiverses() {
                       <TableHead>Description</TableHead>
                       <TableHead>Client</TableHead>
                       <TableHead>Mode</TableHead>
+                      <TableHead>ID Transaction</TableHead>
                       {canManageTreasury && <TableHead className="w-20">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -907,6 +933,9 @@ export default function OperationsDiverses() {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {op.modePaiement || '—'}
+                        </TableCell>
+                        <TableCell className="text-sm font-mono text-muted-foreground">
+                          {op.transactionId || '—'}
                         </TableCell>
                         {canManageTreasury && (
                           <TableCell>
