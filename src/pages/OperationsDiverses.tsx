@@ -102,6 +102,7 @@ export default function OperationsDiverses() {
     modePaiement: '',
     clientTierId: '',
     exclutRevenu: false,
+    transactionId: '',
   });
 
   useEffect(() => {
@@ -132,6 +133,7 @@ export default function OperationsDiverses() {
         (o) =>
           o.description.toLowerCase().includes(q) ||
           (o.reference || '').toLowerCase().includes(q) ||
+          (o.transactionId || '').toLowerCase().includes(q) ||
           o.partie.toLowerCase().includes(q),
       );
     }
@@ -175,6 +177,7 @@ export default function OperationsDiverses() {
       fileName: `od_${new Date().toISOString().split('T')[0]}.xlsx`,
       columns: [
         { header: 'Date', value: (o) => formatDateFr(o.date) },
+        { header: 'ID Trans.', value: (o) => o.transactionId || '—' },
         { header: 'Compte', value: (o) => o.partie },
         { header: 'Type', value: (o) => (o.type === 'entree' ? 'Entrée' : 'Sortie') },
         { header: 'Entrée (FCFA)', value: (o) => (o.type === 'entree' ? o.montant : '') },
@@ -200,6 +203,7 @@ export default function OperationsDiverses() {
       totals: pdfTotals,
       columns: [
         { header: 'Date', value: (o) => formatDateFr(o.date) },
+        { header: 'ID Trans.', value: (o) => o.transactionId || '—' },
         { header: 'Compte', value: (o) => o.partie },
         { header: 'Type', value: (o) => (o.type === 'entree' ? 'Entrée' : 'Sortie'), cellStyle: (o) => (o.type === 'entree' ? 'positive' : 'negative') },
         { header: 'Entrée (FCFA)', value: (o) => (o.type === 'entree' ? `+${o.montant.toLocaleString('fr-FR')}` : '—'), cellStyle: (o) => (o.type === 'entree' ? 'positive' : undefined) },
@@ -223,6 +227,7 @@ export default function OperationsDiverses() {
       modePaiement: '',
       clientTierId: '',
       exclutRevenu: false,
+      transactionId: '',
     });
     setEditingOp(null);
   };
@@ -242,6 +247,10 @@ export default function OperationsDiverses() {
     }
     if (dialogMode === 'operation' && !formData.description.trim()) {
       toast.error('Ajoute une description.');
+      return;
+    }
+    if (formData.partie === 'Master Ansar' && !formData.transactionId.trim()) {
+      toast.error('L\'ID de transaction est obligatoire pour Master Ansar.');
       return;
     }
 
@@ -388,6 +397,7 @@ export default function OperationsDiverses() {
         modePaiement: formData.modePaiement.trim() || undefined,
         clientTierId: formData.clientTierId || undefined,
         exclutRevenu: formData.type === 'entree' && formData.exclutRevenu ? true : undefined,
+        transactionId: formData.transactionId.trim() || undefined,
       };
 
       if (editingOp) {
@@ -441,6 +451,7 @@ export default function OperationsDiverses() {
       modePaiement: op.modePaiement || '',
       clientTierId: op.clientTierId || '',
       exclutRevenu: op.type === 'entree' && Boolean(op.exclutRevenu),
+      transactionId: op.transactionId || '',
     });
     setIsDialogOpen(true);
   };
@@ -598,6 +609,22 @@ export default function OperationsDiverses() {
                 </SelectContent>
               </Select>
             </div>
+
+            {formData.partie === 'Master Ansar' && (
+              <div>
+                <Label htmlFor="od-transaction-id">ID Transaction *</Label>
+                <Input
+                  id="od-transaction-id"
+                  value={formData.transactionId}
+                  onChange={(e) => setFormData({ ...formData, transactionId: e.target.value })}
+                  placeholder="Ex: MA-00123"
+                  required
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Identifiant unique de la transaction Master Ansar
+                </p>
+              </div>
+            )}
 
             {(dialogMode === 'operation' || dialogMode === 'depense') && (
               <PaymentModePicker
@@ -860,6 +887,7 @@ export default function OperationsDiverses() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
+                      <TableHead>ID Trans.</TableHead>
                       <TableHead>Compte</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead className="text-right">Entrée</TableHead>
@@ -875,6 +903,9 @@ export default function OperationsDiverses() {
                       <TableRow key={op.id}>
                         <TableCell className="whitespace-nowrap text-sm">
                           {formatDateFr(op.date)}
+                        </TableCell>
+                        <TableCell className="text-sm font-mono text-muted-foreground">
+                          {op.transactionId || '—'}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={PARTIE_COLORS[op.partie]}>

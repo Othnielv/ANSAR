@@ -764,6 +764,7 @@ export interface OperationDiversePayload {
   modePaiement?: string;
   clientTierId?: string;
   exclutRevenu?: boolean;
+  transactionId?: string;
 }
 
 export const operationsDiversesApi = {

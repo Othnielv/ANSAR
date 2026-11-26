@@ -10,7 +10,7 @@ const VALID_PARTIES = [
   'MTN Mobile Money', 'Orange Money', 'Sub Account', 'Spectrum',
   'Top Mobil', 'MTN Shop', 'Chèque',
   'Afriland', 'CBC', 'UBA', 'Access Bank', 'BGFI',
-  'Express Exchange', 'SCB',
+  'Express Exchange', 'SCB', 'Master Ansar',
 ];
 const VALID_TYPES = ['entree', 'sortie'];
 
@@ -36,6 +36,7 @@ async function ensureSchema() {
     { name: 'mode_paiement', def: 'VARCHAR(255)' },
     { name: 'client_tier_id', def: 'VARCHAR(128)' },
     { name: 'exclut_revenu', def: 'BOOLEAN DEFAULT FALSE' },
+    { name: 'transaction_id', def: 'VARCHAR(255)' },
   ];
   for (const c of cols) {
     await query(`ALTER TABLE ${TABLE} ADD COLUMN IF NOT EXISTS "${c.name}" ${c.def}`).catch(() => {});
@@ -50,6 +51,7 @@ function mapRow(row) {
   if (j.mode_paiement !== undefined) { j.modePaiement = j.mode_paiement; delete j.mode_paiement; }
   if (j.client_tier_id !== undefined) { j.clientTierId = j.client_tier_id; delete j.client_tier_id; }
   if (j.exclut_revenu !== undefined) { j.exclutRevenu = j.exclut_revenu === true || j.exclut_revenu === 't'; delete j.exclut_revenu; }
+  if (j.transaction_id !== undefined) { j.transactionId = j.transaction_id; delete j.transaction_id; }
   return j;
 }
 
@@ -102,11 +104,12 @@ async function createOperation(body, actor) {
     body.modePaiement?.trim() || null,
     body.clientTierId?.trim() || null,
     body.exclutRevenu === true,
+    body.transactionId?.trim() || null,
   ];
   await query(
     `INSERT INTO ${TABLE}
-       (id, partie, type, montant, date, description, reference, utilisateur, "createdAt", mode_paiement, client_tier_id, exclut_revenu)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+       (id, partie, type, montant, date, description, reference, utilisateur, "createdAt", mode_paiement, client_tier_id, exclut_revenu, transaction_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
     params,
   );
   const row = await getOperation(id);
@@ -141,6 +144,7 @@ async function updateOperation(id, body, actor) {
   maybe('mode_paiement', 'modePaiement', (v) => v?.trim() || null);
   maybe('client_tier_id', 'clientTierId', (v) => v?.trim() || null);
   maybe('exclut_revenu', 'exclutRevenu', (v) => v === true);
+  maybe('transaction_id', 'transactionId', (v) => v?.trim() || null);
 
   if (sets.length) {
     await query(`UPDATE ${TABLE} SET ${sets.join(', ')} WHERE id = $1`, vals);
