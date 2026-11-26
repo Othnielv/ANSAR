@@ -230,6 +230,9 @@ export default function Trips() {
   const [camrailTrip, setCamrailTrip] = useState<Trip | null>(null);
   const [camrailQte, setCamrailQte] = useState<number | undefined>(undefined);
   const [camrailDestinataire, setCamrailDestinataire] = useState('');
+  const [camrailWagon, setCamrailWagon] = useState('');
+  const [camrailDate, setCamrailDate] = useState('');
+  const [camrailTransporteur, setCamrailTransporteur] = useState('');
   const [camrailOperations, setCamrailOperations] = useState<CamrailOperation[]>([]);
   const { isSubmitting, withGuard } = useSubmitGuard();
   const [filterTruck, setFilterTruck] = useState<string>('all');
@@ -954,6 +957,9 @@ export default function Trips() {
     setCamrailTrip(trip);
     setCamrailQte(remaining);
     setCamrailDestinataire(trip.destinataire || trip.client || '');
+    setCamrailWagon(trip.numeroWagon || '');
+    setCamrailDate(new Date().toISOString().split('T')[0]);
+    setCamrailTransporteur(trip.transporteur || '');
     setCamrailDialogOpen(true);
   };
 
@@ -984,7 +990,7 @@ export default function Trips() {
     await withGuard(async () => {
       try {
         await createCamrailOperation({
-          date: new Date().toISOString().split('T')[0],
+          date: camrailDate || new Date().toISOString().split('T')[0],
           camionNom: truck?.nom || undefined,
           camionImmatriculation: truck?.immatriculation || undefined,
           quantite: camrailQte!,
@@ -992,8 +998,8 @@ export default function Trips() {
           referenceAtc: camrailTrip.referenceAtc || undefined,
           destinataire: camrailDestinataire.trim(),
           dateChargement: camrailTrip.dateDepart?.split('T')[0] || undefined,
-          numeroWagon: camrailTrip.numeroWagon || undefined,
-          transporteur: camrailTrip.transporteur || undefined,
+          numeroWagon: camrailWagon.trim() || camrailTrip.numeroWagon || undefined,
+          transporteur: camrailTransporteur.trim() || camrailTrip.transporteur || undefined,
           commentaires: `Attribution Camrail depuis trajet ${itineraireResume(camrailTrip.origine, camrailTrip.destination)}`,
           utilisateur: user?.login || 'system',
           tripId: camrailTrip.id,
@@ -3089,6 +3095,36 @@ export default function Trips() {
                       Dépasse le reste disponible ({remaining.toLocaleString('fr-FR')}).
                     </p>
                   )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="camrail-wagon">Numéro wagon</Label>
+                  <Input
+                    id="camrail-wagon"
+                    value={camrailWagon}
+                    onChange={(e) => setCamrailWagon(e.target.value)}
+                    placeholder="Ex. W-1234"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="camrail-send-date">Date *</Label>
+                  <Input
+                    id="camrail-send-date"
+                    type="date"
+                    value={camrailDate}
+                    onChange={(e) => setCamrailDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="camrail-transporteur">Transporteur</Label>
+                  <Input
+                    id="camrail-transporteur"
+                    value={camrailTransporteur}
+                    onChange={(e) => setCamrailTransporteur(e.target.value)}
+                    placeholder="Ex. Camrail, SGTC..."
+                  />
                 </div>
 
                 <Button
