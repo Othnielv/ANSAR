@@ -230,6 +230,8 @@ export default function Trips() {
   const [camrailTrip, setCamrailTrip] = useState<Trip | null>(null);
   const [camrailQte, setCamrailQte] = useState<number | undefined>(undefined);
   const [camrailDestinataire, setCamrailDestinataire] = useState('');
+  const [camrailWagon, setCamrailWagon] = useState('');
+  const [camrailTransporteur, setCamrailTransporteur] = useState('');
   const [camrailOperations, setCamrailOperations] = useState<CamrailOperation[]>([]);
   const { isSubmitting, withGuard } = useSubmitGuard();
   const [filterTruck, setFilterTruck] = useState<string>('all');
@@ -954,6 +956,8 @@ export default function Trips() {
     setCamrailTrip(trip);
     setCamrailQte(remaining);
     setCamrailDestinataire(trip.destinataire || trip.client || '');
+    setCamrailWagon(trip.numeroWagon || '');
+    setCamrailTransporteur(trip.transporteur || '');
     setCamrailDialogOpen(true);
   };
 
@@ -992,8 +996,8 @@ export default function Trips() {
           referenceAtc: camrailTrip.referenceAtc || undefined,
           destinataire: camrailDestinataire.trim(),
           dateChargement: camrailTrip.dateDepart?.split('T')[0] || undefined,
-          numeroWagon: camrailTrip.numeroWagon || undefined,
-          transporteur: camrailTrip.transporteur || undefined,
+          numeroWagon: camrailWagon.trim() || camrailTrip.numeroWagon || undefined,
+          transporteur: camrailTransporteur.trim() || camrailTrip.transporteur || undefined,
           commentaires: `Attribution Camrail depuis trajet ${itineraireResume(camrailTrip.origine, camrailTrip.destination)}`,
           utilisateur: user?.login || 'system',
           tripId: camrailTrip.id,
@@ -3073,6 +3077,37 @@ export default function Trips() {
                     onChange={(e) => setCamrailDestinataire(e.target.value)}
                     placeholder="Client / destinataire"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="camrail-wagon">N° Wagon</Label>
+                  <Input
+                    id="camrail-wagon"
+                    value={camrailWagon}
+                    onChange={(e) => setCamrailWagon(e.target.value)}
+                    placeholder="Ex: W-12345"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="camrail-transporteur-send">Transporteur</Label>
+                  <Select
+                    value={camrailTransporteur || undefined}
+                    onValueChange={(v) => setCamrailTransporteur(v)}
+                  >
+                    <SelectTrigger id="camrail-transporteur-send">
+                      <SelectValue placeholder="Choisir un transporteur…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {thirdParties
+                        .filter((tp) => tp.type === 'transporteur' && tp.nom.trim())
+                        .map((tp) => (
+                          <SelectItem key={tp.id} value={tp.nom}>
+                            {tp.nom}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
