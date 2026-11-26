@@ -23,6 +23,7 @@ export interface CamrailOperation {
   transporteur?: string;
   notes?: string;
   utilisateur?: string;
+  tripId?: string;
   createdAt?: string;
 }
 
@@ -73,6 +74,7 @@ export function normalizeCamrailOperation(
     transporteur: r.transporteur ? String(r.transporteur) : undefined,
     notes: r.notes ? String(r.notes) : undefined,
     utilisateur: r.utilisateur ? String(r.utilisateur) : undefined,
+    tripId: r.tripId ? String(r.tripId) : r.trip_id ? String(r.trip_id) : undefined,
     createdAt: r.createdAt
       ? String(r.createdAt)
       : r.created_at
@@ -164,6 +166,7 @@ export async function createCamrailOperation(
     transporteur: payload.transporteur?.trim() || undefined,
     notes: payload.notes?.trim() || undefined,
     utilisateur: payload.utilisateur?.trim() || undefined,
+    tripId: payload.tripId || undefined,
     createdAt: new Date().toISOString(),
   };
   const next = [created, ...loadLocalOperations()];

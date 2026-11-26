@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, MapPin, Route, CheckCircle, Clock, XCircle, FileText, Filter, X, Search, Download, Eye, DollarSign, Loader2, ListOrdered, ChevronUp, ChevronDown, Pencil, Copy, ListPlus, Receipt, Link2 } from 'lucide-react';
+import { Plus, Trash2, MapPin, Route, CheckCircle, Clock, XCircle, FileText, Filter, X, Search, Download, Eye, DollarSign, Loader2, ListOrdered, ChevronUp, ChevronDown, Pencil, Copy, ListPlus, Receipt, Link2, Train } from 'lucide-react';
 import { toast } from 'sonner';
 import { canDeleteTrip, calculateTripStats, formatTripStatusFr, getTripRemainingRecetteToInvoice, sumMontantTTCForTripInvoices } from '@/lib/sync-utils';
 import CityPicker, { CAMEROON_CITIES } from '@/components/CityPicker';
@@ -63,6 +63,11 @@ import {
   buildTripOperationDetailRows,
   summarizeTripOperationDetails,
 } from '@/lib/trip-operations-detail';
+import {
+  type CamrailOperation,
+  createCamrailOperation,
+  refreshCamrailOperationsFromApi,
+} from '@/lib/camrail-operations';
 
 /** Affichage itinéraire quand la destination résumé est vide. */
 function itineraireResume(origine: string, destination: string | undefined): string {
@@ -220,6 +225,12 @@ export default function Trips() {
   const [merchandiseCatalogOpen, setMerchandiseCatalogOpen] = useState(false);
   const [editingMerchandiseId, setEditingMerchandiseId] = useState<string | null>(null);
   const [merchEditDraft, setMerchEditDraft] = useState('');
+
+  const [camrailDialogOpen, setCamrailDialogOpen] = useState(false);
+  const [camrailTrip, setCamrailTrip] = useState<Trip | null>(null);
+  const [camrailQte, setCamrailQte] = useState<number | undefined>(undefined);
+  const [camrailDestinataire, setCamrailDestinataire] = useState('');
+  const [camrailOperations, setCamrailOperations] = useState<CamrailOperation[]>([]);
   const { isSubmitting, withGuard } = useSubmitGuard();
   const [filterTruck, setFilterTruck] = useState<string>('all');
   const [filterDriver, setFilterDriver] = useState<string>('all');
@@ -922,6 +933,82 @@ export default function Trips() {
     setStopsDialogTrip(trip);
     setStopsDraft(initialStopsDraftFromTrip(trip));
     setIsStopsDialogOpen(true);
+  };
+
+  useEffect(() => {
+    void refreshCamrailOperationsFromApi().then(setCamrailOperations);
+  }, []);
+
+  const camrailOpsForTrip = (tripId: string) =>
+    camrailOperations.filter((op) => op.tripId === tripId);
+
+  const camrailQteSentForTrip = (tripId: string) =>
+    camrailOpsForTrip(tripId).reduce((s, op) => s + op.quantite, 0);
+
+  const openCamrailDialog = (trip: Trip) => {
+    const sent = camrailQteSentForTrip(trip.id);
+    const remaining =
+      trip.quantiteChargee != null && trip.quantiteChargee > 0
+        ? Math.max(0, trip.quantiteChargee - sent)
+        : undefined;
+    setCamrailTrip(trip);
+    setCamrailQte(remaining);
+    setCamrailDestinataire(trip.destinataire || trip.client || '');
+    setCamrailDialogOpen(true);
+  };
+
+  const handleSendToCamrail = async () => {
+    if (!camrailTrip) return;
+    if (!camrailQte || camrailQte <= 0) {
+      toast.error('Indiquez une quantité supérieure à 0.');
+      return;
+    }
+    if (!camrailDestinataire.trim()) {
+      toast.error('Indiquez un destinataire.');
+      return;
+    }
+    const sent = camrailQteSentForTrip(camrailTrip.id);
+    if (
+      camrailTrip.quantiteChargee != null &&
+      camrailTrip.quantiteChargee > 0 &&
+      sent + camrailQte > camrailTrip.quantiteChargee + 0.01
+    ) {
+      toast.error(
+        `Quantité totale envoyée (${(sent + camrailQte).toLocaleString('fr-FR')}) dépasse la quantité chargée (${camrailTrip.quantiteChargee.toLocaleString('fr-FR')}).`,
+      );
+      return;
+    }
+    const truck = trucks.find(
+      (t) => t.id === camrailTrip.tracteurId || t.id === camrailTrip.remorqueuseId,
+    );
+    await withGuard(async () => {
+      try {
+        await createCamrailOperation({
+          date: new Date().toISOString().split('T')[0],
+          camionNom: truck?.nom || undefined,
+          camionImmatriculation: truck?.immatriculation || undefined,
+          quantite: camrailQte!,
+          typeProduit: camrailTrip.marchandise || undefined,
+          referenceAtc: camrailTrip.referenceAtc || undefined,
+          destinataire: camrailDestinataire.trim(),
+          dateChargement: camrailTrip.dateDepart?.split('T')[0] || undefined,
+          numeroWagon: camrailTrip.numeroWagon || undefined,
+          transporteur: camrailTrip.transporteur || undefined,
+          commentaires: `Attribution Camrail depuis trajet ${itineraireResume(camrailTrip.origine, camrailTrip.destination)}`,
+          utilisateur: user?.login || 'system',
+          tripId: camrailTrip.id,
+        });
+        const refreshed = await refreshCamrailOperationsFromApi();
+        setCamrailOperations(refreshed);
+        setCamrailDialogOpen(false);
+        setCamrailTrip(null);
+        toast.success('Quantité envoyée à Camrail avec succès.');
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Erreur lors de l'envoi à Camrail.",
+        );
+      }
+    });
   };
 
   const handleSaveStopsDraft = async () => {
@@ -2496,6 +2583,16 @@ export default function Trips() {
                         <div className="text-xs text-muted-foreground mt-0.5">
                           <span className="font-medium text-foreground/80">Qté :</span>{' '}
                           {trip.quantiteChargee.toLocaleString('fr-FR')}
+                          {(() => {
+                            const sent = camrailQteSentForTrip(trip.id);
+                            if (sent <= 0) return null;
+                            return (
+                              <Badge variant="secondary" className="ml-2 text-[10px] font-normal">
+                                <Train className="h-3 w-3 mr-0.5" />
+                                {sent.toLocaleString('fr-FR')} Camrail
+                              </Badge>
+                            );
+                          })()}
                         </div>
                       ) : null}
                       {trip.retourBordereaux ? (
@@ -2682,6 +2779,21 @@ export default function Trips() {
                               <FileText className="h-4 w-4" />
                             </Button>
                           )}
+                        {canManageFleet && trip.statut !== 'annule' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openCamrailDialog(trip)}
+                            className="h-8 w-8 p-0"
+                            title={`Envoyer à Camrail${
+                              trip.quantiteChargee != null && trip.quantiteChargee > 0
+                                ? ` (${camrailQteSentForTrip(trip.id).toLocaleString('fr-FR')} / ${trip.quantiteChargee.toLocaleString('fr-FR')} envoyé)`
+                                : ''
+                            }`}
+                          >
+                            <Train className="h-4 w-4" />
+                          </Button>
+                        )}
                         {canManageFleet && (
                         <Button
                           size="sm"
@@ -2889,6 +3001,146 @@ export default function Trips() {
               </Button>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog envoi Camrail */}
+      <Dialog
+        open={camrailDialogOpen}
+        onOpenChange={(open) => {
+          setCamrailDialogOpen(open);
+          if (!open) setCamrailTrip(null);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Train className="h-5 w-5" />
+              Envoyer à Camrail
+            </DialogTitle>
+            <DialogDescription>
+              Attribuer une quantité de ce trajet vers le registre Camrail.
+            </DialogDescription>
+          </DialogHeader>
+          {camrailTrip && (() => {
+            const sent = camrailQteSentForTrip(camrailTrip.id);
+            const remaining =
+              camrailTrip.quantiteChargee != null && camrailTrip.quantiteChargee > 0
+                ? Math.max(0, camrailTrip.quantiteChargee - sent)
+                : null;
+            const opsForTrip = camrailOpsForTrip(camrailTrip.id);
+            return (
+              <div className="space-y-4">
+                <div className="bg-muted/50 rounded-lg p-3 border border-border text-sm space-y-1">
+                  <p>
+                    <span className="text-muted-foreground">Itinéraire :</span>{' '}
+                    <span className="font-semibold">{itineraireResume(camrailTrip.origine, camrailTrip.destination)}</span>
+                  </p>
+                  {camrailTrip.marchandise && (
+                    <p>
+                      <span className="text-muted-foreground">Qualité :</span> {camrailTrip.marchandise}
+                    </p>
+                  )}
+                  {camrailTrip.quantiteChargee != null && camrailTrip.quantiteChargee > 0 && (
+                    <p>
+                      <span className="text-muted-foreground">Qté chargée :</span>{' '}
+                      <span className="font-semibold">{camrailTrip.quantiteChargee.toLocaleString('fr-FR')}</span>
+                    </p>
+                  )}
+                  {sent > 0 && (
+                    <p>
+                      <span className="text-muted-foreground">Déjà envoyé à Camrail :</span>{' '}
+                      <span className="font-semibold text-orange-600 dark:text-orange-400">
+                        {sent.toLocaleString('fr-FR')}
+                      </span>
+                    </p>
+                  )}
+                  {remaining != null && (
+                    <p>
+                      <span className="text-muted-foreground">Reste disponible :</span>{' '}
+                      <span className="font-semibold text-green-600 dark:text-green-400">
+                        {remaining.toLocaleString('fr-FR')}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="camrail-destinataire">Destinataire *</Label>
+                  <Input
+                    id="camrail-destinataire"
+                    value={camrailDestinataire}
+                    onChange={(e) => setCamrailDestinataire(e.target.value)}
+                    placeholder="Client / destinataire"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="camrail-qte">Quantité à envoyer *</Label>
+                  <NumberInput
+                    id="camrail-qte"
+                    value={camrailQte}
+                    onChange={(v) => setCamrailQte(v)}
+                    min={0}
+                    placeholder="Ex. 100"
+                  />
+                  {remaining != null && camrailQte != null && camrailQte > remaining + 0.01 && (
+                    <p className="text-xs text-destructive">
+                      Dépasse le reste disponible ({remaining.toLocaleString('fr-FR')}).
+                    </p>
+                  )}
+                </div>
+
+                <Button
+                  className="w-full"
+                  onClick={() => void handleSendToCamrail()}
+                  disabled={isSubmitting || !camrailQte || camrailQte <= 0}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Envoi en cours…
+                    </>
+                  ) : (
+                    <>
+                      <Train className="mr-2 h-4 w-4" />
+                      Envoyer à Camrail
+                    </>
+                  )}
+                </Button>
+
+                {opsForTrip.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-semibold mb-2">Historique envois Camrail</h4>
+                    <Table className="min-w-[400px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Destinataire</TableHead>
+                          <TableHead className="text-right">Quantité</TableHead>
+                          <TableHead>Utilisateur</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {opsForTrip.map((op) => (
+                          <TableRow key={op.id}>
+                            <TableCell className="whitespace-nowrap">{op.date}</TableCell>
+                            <TableCell>{op.destinataire || '—'}</TableCell>
+                            <TableCell className="text-right font-semibold tabular-nums">
+                              {op.quantite.toLocaleString('fr-FR')}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {op.utilisateur || '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
@@ -3111,6 +3363,51 @@ export default function Trips() {
                     Le préfinancement du trajet est compté une seule fois dans le solde (ligne « Préfinancement » ou dépense du même libellé).
                   </p>
                 </div>
+
+                {(() => {
+                  const opsForTrip = camrailOpsForTrip(trip.id);
+                  if (opsForTrip.length === 0) return null;
+                  const totalSent = opsForTrip.reduce((s, op) => s + op.quantite, 0);
+                  return (
+                    <div>
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <Train className="h-4 w-4" />
+                        Attributions Camrail
+                        <Badge variant="secondary" className="font-normal">
+                          {totalSent.toLocaleString('fr-FR')} envoyé
+                        </Badge>
+                      </h4>
+                      <Table className="min-w-[500px]" containerClassName="max-h-none shadow-none">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Destinataire</TableHead>
+                            <TableHead>Produit</TableHead>
+                            <TableHead>Wagon</TableHead>
+                            <TableHead className="text-right">Quantité</TableHead>
+                            <TableHead>Utilisateur</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {opsForTrip.map((op) => (
+                            <TableRow key={op.id}>
+                              <TableCell className="whitespace-nowrap">{op.date}</TableCell>
+                              <TableCell>{op.destinataire || '—'}</TableCell>
+                              <TableCell>{op.typeProduit || '—'}</TableCell>
+                              <TableCell className="font-mono text-xs">{op.numeroWagon || '—'}</TableCell>
+                              <TableCell className="text-right font-semibold tabular-nums">
+                                {op.quantite.toLocaleString('fr-FR')}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground">
+                                {op.utilisateur || '—'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  );
+                })()}
 
                 {tripExpenses.length > 0 ? (
                   <div>

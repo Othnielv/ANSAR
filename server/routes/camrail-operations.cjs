@@ -86,8 +86,8 @@ async function createOperation(body, actor) {
     `INSERT INTO ${TABLE}
       (id, date, "camionNom", "camionImmatriculation", quantite, "typeProduit",
        "referenceAtc", "atComplement", destinataire, "dateChargement",
-       "dateLivraison", "numeroWagon", commentaires, transporteur, notes, utilisateur)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+       "dateLivraison", "numeroWagon", commentaires, transporteur, notes, utilisateur, "tripId")
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
     [
       id,
       dateOnly(body.date),
@@ -105,6 +105,7 @@ async function createOperation(body, actor) {
       body.transporteur?.trim() || null,
       body.notes?.trim() || null,
       body.utilisateur?.trim() || actor?.login || 'Système',
+      body.tripId?.trim() || null,
     ],
   );
 
@@ -133,7 +134,8 @@ async function updateOperation(id, body, actor) {
       "numeroWagon" = COALESCE($12, "numeroWagon"),
       commentaires = COALESCE($13, commentaires),
       transporteur = COALESCE($14, transporteur),
-      notes = COALESCE($15, notes)
+      notes = COALESCE($15, notes),
+      "tripId" = COALESCE($16, "tripId")
      WHERE id = $1`,
     [
       id,
@@ -153,6 +155,7 @@ async function updateOperation(id, body, actor) {
       body.commentaires !== undefined ? body.commentaires?.trim() || null : null,
       body.transporteur !== undefined ? body.transporteur?.trim() || null : null,
       body.notes !== undefined ? body.notes?.trim() || null : null,
+      body.tripId !== undefined ? body.tripId?.trim() || null : null,
     ],
   );
 

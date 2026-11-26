@@ -495,6 +495,7 @@ export interface CamrailOperationPayload {
   transporteur?: string;
   notes?: string;
   utilisateur?: string;
+  tripId?: string | null;
 }
 
 export const camrailOperationsApi = {
