@@ -504,7 +504,17 @@ export default function Camrail() {
         (op.transporteur ?? '').toLowerCase().includes(q) ||
         (op.commentaires ?? '').toLowerCase().includes(q) ||
         String(op.quantite).includes(q) ||
-        (op.atComplement != null ? String(op.atComplement) : '').includes(q)
+        (op.atComplement != null ? String(op.atComplement) : '').includes(q) ||
+        (() => {
+          if (!op.tripId) return false;
+          const trip = tripById.get(op.tripId);
+          if (!trip) return false;
+          return (
+            (trip.origine || '').toLowerCase().includes(q) ||
+            (trip.destination || '').toLowerCase().includes(q) ||
+            (trip.referenceAtc || '').toLowerCase().includes(q)
+          );
+        })()
       );
     });
   }, [
@@ -826,6 +836,15 @@ export default function Camrail() {
       header: 'Commentaires',
       value: (op: CamrailOperation) => op.commentaires || '',
     },
+    {
+      header: 'Trajet',
+      value: (op: CamrailOperation) => {
+        if (!op.tripId) return '';
+        const trip = tripById.get(op.tripId);
+        if (!trip) return op.tripId.slice(0, 8);
+        return `${trip.origine} → ${trip.destination}${trip.referenceAtc ? ` (${trip.referenceAtc})` : ''}`;
+      },
+    },
   ];
 
   const exportFiltersParts: string[] = [];
@@ -845,7 +864,13 @@ export default function Camrail() {
   const exportFilters =
     exportFiltersParts.length > 0 ? exportFiltersParts.join(' · ') : undefined;
 
-  const colCount = canManageFleet ? 11 : 10;
+  const tripById = useMemo(() => {
+    const map = new Map<string, (typeof trips)[number]>();
+    for (const t of trips) map.set(t.id, t);
+    return map;
+  }, [trips]);
+
+  const colCount = canManageFleet ? 12 : 11;
 
   return (
     <div className="space-y-6 p-1">
@@ -1865,6 +1890,7 @@ export default function Camrail() {
                   <TableHead>Livraison</TableHead>
                   <TableHead>Wagon</TableHead>
                   <TableHead>Transporteur</TableHead>
+                  <TableHead>Trajet</TableHead>
                   {canManageFleet && (
                     <TableHead className="text-right">Actions</TableHead>
                   )}
@@ -1913,6 +1939,18 @@ export default function Camrail() {
                       </TableCell>
                       <TableCell>{op.numeroWagon || '—'}</TableCell>
                       <TableCell>{op.transporteur || '—'}</TableCell>
+                      <TableCell className="text-xs">
+                        {op.tripId ? (() => {
+                          const trip = tripById.get(op.tripId);
+                          if (!trip) return <span className="text-muted-foreground">#{op.tripId.slice(0, 6)}</span>;
+                          return (
+                            <Badge variant="outline" className="bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30 font-normal">
+                              {trip.origine} <ArrowRight className="inline h-3 w-3 mx-0.5" /> {trip.destination}
+                              {trip.referenceAtc ? ` (${trip.referenceAtc})` : ''}
+                            </Badge>
+                          );
+                        })() : '—'}
+                      </TableCell>
                       {canManageFleet && (
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
