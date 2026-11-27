@@ -209,7 +209,7 @@ export default function AuditLogs() {
       columns: auditColumns,
       rows,
     });
-    toast.success(‘Export PDF · enregistrez via la fenêtre d\’impression’);
+    toast.success("Export PDF · enregistrez via la fenêtre d’impression");
   };
 
   return (

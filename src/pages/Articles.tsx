@@ -307,7 +307,7 @@ export default function Articles() {
       ],
       getDetailHeading: (a) => a.libelle,
     });
-    toast.success(‘Export PDF · enregistrez via la fenêtre d\’impression’);
+    toast.success("Export PDF · enregistrez via la fenêtre d’impression");
   };
 
   return (

@@ -413,7 +413,7 @@ export default function Dashboard() {
         { label: 'Commandes actives', value: activeOrders, style: 'neutral' },
       ],
     });
-    toast.success(‘Export PDF · enregistrez via la fenêtre d\’impression’);
+    toast.success("Export PDF · enregistrez via la fenêtre d’impression");
   };
 
   return (

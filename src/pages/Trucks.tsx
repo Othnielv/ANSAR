@@ -694,7 +694,7 @@ export default function Trucks({ flotteScope = 'ansar' }: { flotteScope?: TruckF
       buildDetailBlocks: (t) =>
         buildTruckDetailBlocks(t, supplierLoadings, clientDeliveries, clientOrders),
     });
-    toast.success(‘Export PDF · enregistrez via la fenêtre d\’impression’);
+    toast.success("Export PDF · enregistrez via la fenêtre d’impression");
   };
 
   return (

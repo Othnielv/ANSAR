@@ -134,7 +134,7 @@ export default function Users() {
       ],
       rows: users,
     });
-    toast.success(‘Export PDF · enregistrez via la fenêtre d\’impression’);
+    toast.success("Export PDF · enregistrez via la fenêtre d’impression");
   };
 
   return (

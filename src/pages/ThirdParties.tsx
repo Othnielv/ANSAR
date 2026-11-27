@@ -782,7 +782,7 @@ export default function ThirdParties({ scope = 'all' }: { scope?: ThirdPartiesSc
           { label: 'Clients exportés', value: ctx.clients.length, style: 'positive', icon: '👥' },
           { label: 'Clients avec commandes', value: clientsWithOrders, style: 'neutral', icon: EMOJI.liste },
         ]);
-        toast.success(‘Export PDF détaillé généré · utilisez « Enregistrer en PDF » dans la fenêtre d\’impression’);
+        toast.success("Export PDF détaillé généré · utilisez « Enregistrer en PDF » dans la fenêtre d’impression");
       });
       return;
     }
