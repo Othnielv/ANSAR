@@ -84,8 +84,8 @@ import {
 } from '@/lib/client-initial-balance';
 import { linkDriverTruckSelection } from '@/lib/driver-truck-link';
 import { truckMissionLabel } from '@/lib/trip-mission-context';
-import { getCaisseTransactions, type CaisseTransaction } from '@/lib/caisse-local';
-import { getOperationsDiverses, type OperationDiverse } from '@/lib/operations-diverses';
+import { getCaisseTransactions, isRemoteCaisse, refreshCaisseFromApi } from '@/lib/caisse-local';
+import { getOperationsDiverses, refreshOdFromApi } from '@/lib/operations-diverses';
 
 function formatFcfa(n: number): string {
   return `${Math.round(n).toLocaleString('fr-FR')} FCFA`;
@@ -169,31 +169,46 @@ export function ClientOperationsPanels({
     modePaiement?: string;
   };
 
-  const clientMovements = useMemo<ClientMovement[]>(() => {
-    if (!clientId || isWalkIn) return [];
-    const caisseTxs = getCaisseTransactions()
-      .filter((t) => t.clientTierId === clientId)
-      .map((t): ClientMovement => ({
-        id: t.id,
-        source: 'caisse',
-        type: t.type,
-        montant: t.montant,
-        date: t.date,
-        description: t.description,
-        modePaiement: t.modePaiement,
-      }));
-    const odTxs = getOperationsDiverses()
-      .filter((o) => o.clientTierId === clientId)
-      .map((o): ClientMovement => ({
-        id: o.id,
-        source: 'od',
-        type: o.type,
-        montant: o.montant,
-        date: o.date,
-        description: o.description,
-        modePaiement: o.modePaiement,
-      }));
-    return [...caisseTxs, ...odTxs].sort((a, b) => b.date.localeCompare(a.date));
+  const [clientMovements, setClientMovements] = useState<ClientMovement[]>([]);
+
+  useEffect(() => {
+    if (!clientId || isWalkIn) {
+      setClientMovements([]);
+      return;
+    }
+    let cancelled = false;
+    const load = () => {
+      const caisseTxs = getCaisseTransactions()
+        .filter((t) => t.clientTierId === clientId)
+        .map((t): ClientMovement => ({
+          id: t.id,
+          source: 'caisse',
+          type: t.type,
+          montant: t.montant,
+          date: t.date,
+          description: t.description,
+          modePaiement: t.modePaiement,
+        }));
+      const odTxs = getOperationsDiverses()
+        .filter((o) => o.clientTierId === clientId)
+        .map((o): ClientMovement => ({
+          id: o.id,
+          source: 'od',
+          type: o.type,
+          montant: o.montant,
+          date: o.date,
+          description: o.description,
+          modePaiement: o.modePaiement,
+        }));
+      if (!cancelled) setClientMovements([...caisseTxs, ...odTxs].sort((a, b) => b.date.localeCompare(a.date)));
+    };
+    load();
+    if (isRemoteCaisse()) {
+      Promise.all([refreshCaisseFromApi(), refreshOdFromApi()])
+        .then(load)
+        .catch(() => {});
+    }
+    return () => { cancelled = true; };
   }, [clientId, isWalkIn]);
 
   const fournisseurs = useMemo(
