@@ -682,7 +682,7 @@ export function ClientOperationsPanels({
           }
           toast.success(
             payload.statut === 'livree'
-              ? 'Commande marquée livrée — retirée des commandes actives'
+              ? 'Commande marquée livrée · retirée des commandes actives'
               : 'Commande mise à jour',
           );
         } else {
@@ -715,16 +715,16 @@ export function ClientOperationsPanels({
             const payMsg =
               payment && payment.montantPaye > 0
                 ? payment.statut === 'payee'
-                  ? ' — facture soldée'
-                  : ` — acompte ${payment.montantPaye.toLocaleString('fr-FR')} FCFA`
+                  ? ' · facture soldée'
+                  : ` · acompte ${payment.montantPaye.toLocaleString('fr-FR')} FCFA`
                 : '';
             toast.success(`Commande enregistrée et liée au bon fournisseur${payMsg}`);
           } else {
             const payMsg =
               payment && payment.montantPaye > 0
                 ? payment.statut === 'payee'
-                  ? ' — facture soldée'
-                  : ` — acompte ${payment.montantPaye.toLocaleString('fr-FR')} FCFA`
+                  ? ' · facture soldée'
+                  : ` · acompte ${payment.montantPaye.toLocaleString('fr-FR')} FCFA`
                 : '';
             toast.success(`Commande enregistrée${payMsg}`);
           }
@@ -834,14 +834,14 @@ export function ClientOperationsPanels({
           await updateClientDelivery(editingDelivery.id, payload);
           toast.success(
             payload.statut === 'livree'
-              ? 'Livraison effectuée — commande passée en livrée et retirée des actives si toutes les livraisons sont faites'
+              ? 'Livraison effectuée · commande passée en livrée et retirée des actives si toutes les livraisons sont faites'
               : 'Livraison mise à jour',
           );
         } else {
           await createClientDelivery(payload);
           toast.success(
             payload.statut === 'livree'
-              ? 'Livraison effectuée — commande mise à jour'
+              ? 'Livraison effectuée · commande mise à jour'
               : 'Livraison planifiée',
           );
         }
@@ -868,7 +868,7 @@ export function ClientOperationsPanels({
         </div>
         {activeOrders.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Aucune commande active — enregistrez la demande du donneur d’ordre (produit, quantité, destination).
+            Aucune commande active · enregistrez la demande du donneur d’ordre (produit, quantité, destination).
           </p>
         ) : (
           <ul className="space-y-2 max-h-52 overflow-y-auto pr-1">
@@ -979,7 +979,7 @@ export function ClientOperationsPanels({
         {closedOrders.length > 0 && (
           <details className="mt-3 rounded-lg border border-dashed bg-muted/20">
             <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-muted-foreground">
-              Historique — livrées / annulées ({closedOrders.length})
+              Historique · livrées / annulées ({closedOrders.length})
             </summary>
             <ul className="space-y-2 max-h-40 overflow-y-auto px-2 pb-2">
               {closedOrders.map((o) => (
@@ -1041,7 +1041,7 @@ export function ClientOperationsPanels({
         </div>
         {deliveries.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Aucune livraison planifiée — rattachez chaque enlèvement / livraison à une commande.
+            Aucune livraison planifiée · rattachez chaque enlèvement / livraison à une commande.
           </p>
         ) : (
           <ul className="space-y-2 max-h-48 overflow-y-auto pr-1">
@@ -1090,7 +1090,7 @@ export function ClientOperationsPanels({
                       {d.statut === 'livree' &&
                       d.montantTransport != null &&
                       d.montantTransport > 0
-                        ? `Transport inclus — facture ${invoiceForDelivery(d)!.numero}`
+                        ? `Transport inclus · facture ${invoiceForDelivery(d)!.numero}`
                         : `Facture commande ${invoiceForDelivery(d)!.numero}`}
                     </Link>
                   )}
@@ -1201,7 +1201,7 @@ export function ClientOperationsPanels({
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Aucun — saisie libre" />
+                    <SelectValue placeholder="Aucun · saisie libre" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="_none">— Aucun bon —</SelectItem>
@@ -2004,7 +2004,7 @@ export function ClientOperationsPanels({
                       value={deliveryForm.montantTransport}
                       onChange={(v) => setDeliveryForm((p) => ({ ...p, montantTransport: v }))}
                     />
-                    <p className="text-[11px] text-muted-foreground">Facultatif — inclus sur la FAC-CMD si renseigné et livraison effectuée.</p>                  </div>
+                    <p className="text-[11px] text-muted-foreground">Facultatif · inclus sur la FAC-CMD si renseigné et livraison effectuée.</p>                  </div>
                 </>
               )}
             </div>
@@ -2018,7 +2018,7 @@ export function ClientOperationsPanels({
                     value={deliveryForm.montantTransport}
                     onChange={(v) => setDeliveryForm((p) => ({ ...p, montantTransport: v }))}
                   />
-                  <p className="text-[11px] text-muted-foreground">Facultatif — inclus sur la FAC-CMD si renseigné et livraison effectuée.</p>
+                  <p className="text-[11px] text-muted-foreground">Facultatif · inclus sur la FAC-CMD si renseigné et livraison effectuée.</p>
                 </div>
               )}
             </>

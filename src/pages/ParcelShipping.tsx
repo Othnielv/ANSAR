@@ -595,7 +595,7 @@ export default function ParcelShipping() {
     const label = EXPEDITION_SORT_OPTIONS.find((o) => o.value === listSort)?.label;
     if (label) parts.push(`Tri : ${label}`);
     if (hasActiveFilters) parts.push('Filtres actifs');
-    return parts.length ? parts.join(' — ') : undefined;
+    return parts.length ? parts.join(' · ') : undefined;
   }, [listSort, hasActiveFilters]);
 
   const handleExportExcel = () => {
@@ -1408,7 +1408,7 @@ export default function ParcelShipping() {
             <>
               <DialogHeader>
                 <DialogTitle>
-                  Expédition {viewing.reference} — {viewing.origine} → {viewing.destination}
+                  Expédition {viewing.reference} · {viewing.origine} → {viewing.destination}
                 </DialogTitle>
               </DialogHeader>
 

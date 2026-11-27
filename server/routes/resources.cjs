@@ -193,7 +193,7 @@ async function ensureTripInvoiceOnCompletion(trip, actor) {
       new Date().toISOString().slice(0, 10),
       clientTierId,
       factureClientLibelle,
-      `Facture automatique — trajet ${trip.origine} → ${trip.destination}`,
+      `Facture automatique · trajet ${trip.origine} → ${trip.destination}`,
     ],
   );
   await audit(

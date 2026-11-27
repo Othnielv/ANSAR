@@ -541,7 +541,7 @@ export default function Chargements() {
                 statut: 'confirmee',
                 dateCommande: form.dateChargement,
                 notes: form.numeroBon
-                  ? `Affectation directe — bon ${form.numeroBon.trim()}`
+                  ? `Affectation directe · bon ${form.numeroBon.trim()}`
                   : 'Affectation directe à la création du bon',
               });
               createdOrderIds.push(order.id);
@@ -709,7 +709,7 @@ export default function Chargements() {
               statut: 'confirmee',
               dateCommande: todayIso(),
               notes: assignLoading.numeroBon
-                ? `Affectation — bon ${assignLoading.numeroBon.trim()}`
+                ? `Affectation · bon ${assignLoading.numeroBon.trim()}`
                 : 'Affectation bon fournisseur',
             });
             createdOrderIds.push(order.id);
@@ -1017,7 +1017,7 @@ export default function Chargements() {
       rows: sortedLoadings,
       buildDetailBlocks: buildLoadingDetailBlocks,
       getDetailHeading: (l) =>
-        `${l.numeroBon?.trim() || l.designation} — ${l.fournisseurNom ?? 'Fournisseur'}`,
+        `${l.numeroBon?.trim() || l.designation} · ${l.fournisseurNom ?? 'Fournisseur'}`,
     });
     toast.success('Export Excel généré');
   };
@@ -1043,9 +1043,9 @@ export default function Chargements() {
       rows: sortedLoadings,
       buildDetailBlocks: buildLoadingDetailBlocks,
       getDetailHeading: (l) =>
-        `${l.numeroBon?.trim() || l.designation} — ${l.fournisseurNom ?? ''}`,
+        `${l.numeroBon?.trim() || l.designation} · ${l.fournisseurNom ?? ''}`,
     });
-    toast.success(`Export PDF — enregistrez via la fenêtre d'impression`);
+    toast.success(`Export PDF · enregistrez via la fenêtre d'impression`);
   };
 
   const handlePrintBonReceipt = (l: SupplierLoading) => {
@@ -1062,7 +1062,7 @@ export default function Chargements() {
           resolveClientName: (id) => clientsById.get(id),
         }),
       });
-      toast.success('Reçu ouvert — Imprimer / Enregistrer en PDF');
+      toast.success('Reçu ouvert · Imprimer / Enregistrer en PDF');
     } catch (error) {
       console.error('Erreur impression bon:', error);
       toast.error('Impossible de générer le reçu');
@@ -1907,7 +1907,7 @@ export default function Chargements() {
             <DialogTitle>
               Lier un camion
               {truckLinkLoading
-                ? ` — ${truckLinkLoading.numeroBon?.trim() || truckLinkLoading.designation}`
+                ? ` · ${truckLinkLoading.numeroBon?.trim() || truckLinkLoading.designation}`
                 : ''}
             </DialogTitle>
           </DialogHeader>
@@ -1978,7 +1978,7 @@ export default function Chargements() {
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
         <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Affecter — {assignLoading?.designation}</DialogTitle>
+            <DialogTitle>Affecter · {assignLoading?.designation}</DialogTitle>
           </DialogHeader>
           {assignLoading && (
             <div className="space-y-4">
@@ -2065,7 +2065,7 @@ export default function Chargements() {
       <Dialog open={reassignDialogOpen} onOpenChange={setReassignDialogOpen}>
         <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Réaffecter le bon — {reassignLoading?.designation}</DialogTitle>
+            <DialogTitle>Réaffecter le bon · {reassignLoading?.designation}</DialogTitle>
           </DialogHeader>
           {reassignLoading && (
             <div className="space-y-4">

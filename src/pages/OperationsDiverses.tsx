@@ -173,7 +173,7 @@ export default function OperationsDiverses() {
 
   const handleExportExcel = () => {
     exportToExcel({
-      title: `Opérations Diverses${activePartie !== 'all' ? ` — ${activePartie}` : ''}`,
+      title: `Opérations Diverses${activePartie !== 'all' ? ` · ${activePartie}` : ''}`,
       fileName: `od_${new Date().toISOString().split('T')[0]}.xlsx`,
       columns: [
         { header: 'Date', value: (o) => formatDateFr(o.date) },
@@ -192,7 +192,7 @@ export default function OperationsDiverses() {
 
   const handleExportPDF = () => {
     exportToPrintablePDF({
-      title: `Opérations Diverses${activePartie !== 'all' ? ` — ${activePartie}` : ''}`,
+      title: `Opérations Diverses${activePartie !== 'all' ? ` · ${activePartie}` : ''}`,
       fileName: `od_${new Date().toISOString().split('T')[0]}.pdf`,
       headerColor: '#4f46e5',
       headerTextColor: '#ffffff',
@@ -351,7 +351,7 @@ export default function OperationsDiverses() {
           type: 'sortie',
           montant,
           date: today,
-          description: `Crédit vers caisse — ${desc}`,
+          description: `Crédit vers caisse : ${desc}`,
           reference: `depense-caisse:${refId}`,
           utilisateur,
           modePaiement: formData.modePaiement.trim() || undefined,
@@ -843,7 +843,7 @@ export default function OperationsDiverses() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <CardTitle className="shrink-0">
               {activePartie !== 'all'
-                ? `Opérations — ${activePartie}`
+                ? `Opérations · ${activePartie}`
                 : 'Toutes les opérations'}
             </CardTitle>
             <div className="relative w-full lg:max-w-xs">

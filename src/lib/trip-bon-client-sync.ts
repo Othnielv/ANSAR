@@ -134,8 +134,8 @@ export async function syncTripBonToClientAccounts(params: {
   let created = 0;
   let updated = 0;
   const noteBase = bon.numeroBon?.trim()
-    ? `Affectation via trajet — bon ${bon.numeroBon.trim()}`
-    : 'Affectation via trajet — bon fournisseur';
+    ? `Affectation via trajet · bon ${bon.numeroBon.trim()}`
+    : 'Affectation via trajet · bon fournisseur';
 
   for (const p of activeParts) {
     const billing = resolveParticipantBilling(p, bon);
@@ -157,6 +157,9 @@ export async function syncTripBonToClientAccounts(params: {
         destination: p.lieuLivraison?.trim() || undefined,
         reference: p.sousReferenceBon?.trim() || undefined,
         notes: noteBase,
+        ...(p.montantVerse != null && p.montantVerse > 0
+          ? { montantPaye: p.montantVerse, datePaiement: params.dateCommande }
+          : {}),
       });
       updated += 1;
     } else {
@@ -175,6 +178,9 @@ export async function syncTripBonToClientAccounts(params: {
         destination: p.lieuLivraison?.trim() || undefined,
         reference: p.sousReferenceBon?.trim() || undefined,
         notes: noteBase,
+        ...(p.montantVerse != null && p.montantVerse > 0
+          ? { montantPaye: p.montantVerse, datePaiement: dateCommande }
+          : {}),
       });
       orderId = order.id;
       usedOrderIds.add(orderId);

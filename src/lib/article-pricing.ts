@@ -33,7 +33,7 @@ export function formatArticleSupplierPriceLabel(
   const pu = getArticleSupplierUnitPrice(article, fournisseurId);
   const base = article.libelle;
   if (pu == null) return base;
-  return `${base} — ${pu.toLocaleString('fr-FR')} FCFA / ${article.unite || 'unité'}`;
+  return `${base} · ${pu.toLocaleString('fr-FR')} FCFA / ${article.unite || 'unité'}`;
 }
 
 export function findSupplierPriceRow(
@@ -78,5 +78,5 @@ export function formatArticleSalePriceLabel(article: Article): string {
   const pu = getArticleSaleUnitPrice(article);
   const base = article.libelle;
   if (pu == null) return base;
-  return `${base} — ${pu.toLocaleString('fr-FR')} FCFA / ${article.unite || 'unité'}`;
+  return `${base} · ${pu.toLocaleString('fr-FR')} FCFA / ${article.unite || 'unité'}`;
 }

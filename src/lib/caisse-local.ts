@@ -203,7 +203,7 @@ export async function appendEntreeFromInvoicePayment(params: {
   if (params.montant <= 0) return;
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   const base = `Encaissement facture ${params.factureNumero}${params.modeLibelle ? ` (${params.modeLibelle})` : ''}`;
-  const description = params.payeurNote ? `${base} — payeur : ${params.payeurNote}` : base;
+  const description = params.payeurNote ? `${base} · payeur : ${params.payeurNote}` : base;
   const tx: CaisseTransaction = {
     id,
     type: 'entree',
@@ -297,7 +297,7 @@ export async function upsertSortieFromExpense(expense: {
     type: 'sortie',
     montant: expense.montant,
     date: dateStr,
-    description: `Dépense — ${expense.description}`,
+    description: `Dépense : ${expense.description}`,
     reference: ref,
     categorie: expense.categorie || 'Dépenses',
     utilisateur: 'Système',

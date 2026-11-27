@@ -665,6 +665,7 @@ export default function Trips() {
                   quantite: p.quantite != null && p.quantite > 0 ? p.quantite : undefined,
                   lieuLivraison: p.lieuLivraison?.trim() || undefined,
                   sousReferenceBon: p.sousReferenceBon?.trim() || undefined,
+                  montantVerse: p.montantVerse != null && p.montantVerse > 0 ? p.montantVerse : undefined,
                 };
               })
             : [];
@@ -881,7 +882,7 @@ export default function Trips() {
     try {
       await updateTrip(tripId, payload);
       if (newStatus === 'termine') {
-        toast.success('Trajet terminé — facture créée automatiquement si recette restante');
+        toast.success('Trajet terminé · facture créée automatiquement si recette restante');
       } else {
         toast.success(
           newStatus === 'annule' ? 'Trajet annulé' : 'Statut mis à jour',
@@ -2179,6 +2180,21 @@ export default function Trips() {
                                   />
                                 </div>
                                 <div>
+                                  <Label className="text-xs">Montant versé (FCFA)</Label>
+                                  <NumberInput
+                                    className="mt-1"
+                                    min={0}
+                                    max={montant != null ? Math.round(montant) : undefined}
+                                    value={p.montantVerse ?? 0}
+                                    onChange={(value) =>
+                                      patchParticipant(index, {
+                                        montantVerse: value > 0 ? value : undefined,
+                                      })
+                                    }
+                                    placeholder="0"
+                                  />
+                                </div>
+                                <div>
                                   <Label className="text-xs">Sous-référence bon</Label>
                                   <Input
                                     className="mt-1"
@@ -2250,7 +2266,7 @@ export default function Trips() {
               ) && (
                 <div className="rounded-lg border border-sky-200/80 dark:border-sky-900/50 bg-sky-50/40 dark:bg-sky-950/20 p-3 space-y-3">
                   <p className="text-xs font-semibold text-sky-700 dark:text-sky-300 uppercase tracking-wide">
-                    Client CAMRAIL — Informations wagon
+                    Client CAMRAIL · Informations wagon
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -2778,7 +2794,7 @@ export default function Trips() {
                               variant="outline"
                               onClick={() => openTripInvoicing(trip.id)}
                               className="h-8 w-8 p-0"
-                              title="Facturer ce trajet (ou le reste) — plusieurs clients possibles"
+                              title="Facturer ce trajet (ou le reste) · plusieurs clients possibles"
                             >
                               <FileText className="h-4 w-4" />
                             </Button>

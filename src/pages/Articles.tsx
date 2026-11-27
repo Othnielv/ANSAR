@@ -307,7 +307,7 @@ export default function Articles() {
       ],
       getDetailHeading: (a) => a.libelle,
     });
-    toast.success('Export PDF — enregistrez via la fenêtre d’impression');
+    toast.success(‘Export PDF · enregistrez via la fenêtre d\’impression’);
   };
 
   return (
@@ -505,7 +505,7 @@ export default function Articles() {
                           </div>
                           {prices.length === 0 ? (
                             <p className="text-sm text-muted-foreground">
-                              Aucun tarif — ajoutez le prix chez chaque fournisseur concerné.
+                              Aucun tarif · ajoutez le prix chez chaque fournisseur concerné.
                             </p>
                           ) : (
                             <Table>

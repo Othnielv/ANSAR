@@ -541,11 +541,11 @@ export function exportClientsDetailedExcel(ctx: ClientsExportContext): void {
   const blocks: ExportDetailBlock[] = soloClient
     ? buildClientDetailBlocks(soloClient, ctx).map((b) => ({
         ...b,
-        title: `${soloClient.nom} — ${b.title}`,
+        title: `${soloClient.nom} · ${b.title}`,
       }))
     : ctx.clients.map((c) => buildClientLedgerBlock(c, ctx));
   exportBlocksToExcel({
-    title: soloClient ? `Compte client — ${soloClient.nom}` : 'Comptes clients',
+    title: soloClient ? `Compte client · ${soloClient.nom}` : 'Comptes clients',
     fileName: `${prefix}_comptes_${new Date().toISOString().split('T')[0]}.xlsx`,
     sheetName: 'Comptes clients',
     filtersDescription: ctx.filtersDescription,
@@ -559,7 +559,7 @@ export function exportClientsDetailedPDF(
 ): void {
   const prefix = ctx.fileNamePrefix ?? 'clients';
   exportToPrintablePDFWithDetails({
-    title: 'Liste des clients — détail complet',
+    title: 'Liste des clients · détail complet',
     fileName: `${prefix}_${new Date().toISOString().split('T')[0]}.pdf`,
     filtersDescription: ctx.filtersDescription,
     headerColor: '#059669',

@@ -134,7 +134,7 @@ export default function Users() {
       ],
       rows: users,
     });
-    toast.success('Export PDF — enregistrez via la fenêtre d’impression');
+    toast.success(‘Export PDF · enregistrez via la fenêtre d\’impression’);
   };
 
   return (
@@ -344,7 +344,7 @@ export default function Users() {
           </DialogHeader>
           <form onSubmit={handleReset} className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Compte <span className="font-medium text-foreground">{resetLogin}</span> — l’utilisateur
+              Compte <span className="font-medium text-foreground">{resetLogin}</span> · l’utilisateur
               devra changer ce mot de passe temporaire à sa prochaine connexion, avant d’utiliser
               l’application.
             </p>

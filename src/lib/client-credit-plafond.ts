@@ -149,6 +149,6 @@ export function checkPretAccordePlafond(params: {
   if (encours + newCible <= plafond + 0.01) return { ok: true };
   return {
     ok: false,
-    message: `Ce client n'est pas éligible — le plafond d'encours serait dépassé.`,
+    message: `Ce client n'est pas éligible : le plafond d'encours serait dépassé.`,
   };
 }

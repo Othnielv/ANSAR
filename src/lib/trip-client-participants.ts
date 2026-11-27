@@ -10,6 +10,8 @@ export interface TripClientParticipant {
   lieuLivraison?: string;
   /** Sous-référence bon pour ce client. */
   sousReferenceBon?: string;
+  /** Montant déjà versé par le client (FCFA). */
+  montantVerse?: number;
 }
 
 export function newTripClientParticipant(
@@ -28,6 +30,7 @@ export function newTripClientParticipant(
     quantite: partial?.quantite,
     lieuLivraison: partial?.lieuLivraison,
     sousReferenceBon: partial?.sousReferenceBon,
+    montantVerse: partial?.montantVerse,
   };
 }
 

@@ -72,7 +72,7 @@ export function ThirdPartyPicker({
   const triggerLabel = selectedTop
     ? selectedTop.label
     : selectedTier
-      ? `${selectedTier.nom}${selectedTier.telephone ? ` — ${selectedTier.telephone}` : ''}`
+      ? `${selectedTier.nom}${selectedTier.telephone ? ` · ${selectedTier.telephone}` : ''}`
       : orphan || placeholder;
 
   const hasTop = topChoices && topChoices.length > 0;

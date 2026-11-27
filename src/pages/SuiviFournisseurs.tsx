@@ -172,7 +172,7 @@ export default function SuiviFournisseurs() {
     <div className="space-y-6 p-1">
       <PageHeader
         title="Achats fournisseurs"
-        description="Récapitulatif des bons créés dans Chargements — mouvements ANSA'R chez ses fournisseurs."
+        description="Récapitulatif des bons créés dans Chargements · mouvements ANSA'R chez ses fournisseurs."
         icon={BookOpen}
         gradient="from-orange-500/20 via-amber-500/10 to-transparent"
         iconColor="from-orange-600 via-amber-600 to-yellow-700"

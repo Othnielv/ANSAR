@@ -296,7 +296,7 @@ export default function Fournisseurs() {
         getDetailHeading: (s) => s.nom,
       });
     }
-    toast.success('Export PDF — enregistrez via la fenêtre d’impression');
+    toast.success(‘Export PDF · enregistrez via la fenêtre d\’impression’);
   };
 
   return (
@@ -429,7 +429,7 @@ export default function Fournisseurs() {
                         {formatSupplierActivityKindFr(a.kind)}
                         {a.date ? ` · ${a.date}` : ''}
                         {a.statut ? ` · ${a.statut}` : ''}
-                        {a.detail ? ` — ${a.detail}` : ''}
+                        {a.detail ? ` · ${a.detail}` : ''}
                         {a.amount != null ? ` · ${formatFcfa(a.amount)}` : ''}
                       </p>
                     </div>
@@ -502,7 +502,7 @@ export default function Fournisseurs() {
           <Card className="lg:col-span-3">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">
-                {selected ? `Interactions — ${selected.nom}` : 'Sélectionnez un fournisseur'}
+                {selected ? `Interactions · ${selected.nom}` : 'Sélectionnez un fournisseur'}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -610,7 +610,7 @@ export default function Fournisseurs() {
                                 {formatSupplierActivityKindFr(a.kind)}
                                 {a.date ? ` · ${a.date}` : ''}
                                 {a.statut ? ` · ${a.statut}` : ''}
-                                {a.detail ? ` — ${a.detail}` : ''}
+                                {a.detail ? ` · ${a.detail}` : ''}
                                 {a.amount != null ? ` · ${formatFcfa(a.amount)}` : ''}
                               </p>
                             </div>

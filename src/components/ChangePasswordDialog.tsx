@@ -79,12 +79,12 @@ export function ChangePasswordDialog({ open, onOpenChange, forced = false }: Pro
           <DialogDescription>
             {forced ? (
               <>
-                Compte <span className="font-medium text-foreground">{user?.login}</span> — pour
+                Compte <span className="font-medium text-foreground">{user?.login}</span> · pour
                 votre sécurité, définissez un nouveau mot de passe avant d’utiliser l’application.
               </>
             ) : (
               <>
-                Compte <span className="font-medium text-foreground">{user?.login}</span> — seul vous
+                Compte <span className="font-medium text-foreground">{user?.login}</span> · seul vous
                 pouvez modifier votre mot de passe.
               </>
             )}

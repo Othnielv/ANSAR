@@ -268,7 +268,7 @@ export default function SoldesFournisseurs() {
     <div className="space-y-6">
       <PageHeader
         title="Soldes Fournisseurs"
-        subtitle="Suivi du solde chez chaque fournisseur — dépôts, retraits et emprunts"
+        subtitle="Suivi du solde chez chaque fournisseur · dépôts, retraits et emprunts"
         action={
           canManageTreasury && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -342,7 +342,7 @@ export default function SoldesFournisseurs() {
                     <Input
                       value={formData.description}
                       onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))}
-                      placeholder="Ex: Dépôt client Kamga — bon 3M"
+                      placeholder="Ex: Dépôt client Kamga · bon 3M"
                     />
                   </div>
                   <div className="space-y-2">
@@ -471,7 +471,7 @@ export default function SoldesFournisseurs() {
           <CardTitle className="text-lg">
             Mouvements
             {activeFournisseur !== 'all' &&
-              ` — ${fournisseursById.get(activeFournisseur) || activeFournisseur}`}
+              ` · ${fournisseursById.get(activeFournisseur) || activeFournisseur}`}
             <span className="ml-2 text-sm font-normal text-muted-foreground">
               ({filtered.length})
             </span>

@@ -172,7 +172,7 @@ export default function Dashboard() {
       if (!parsed.data || !parsed.version) throw new Error('Fichier de backup invalide ou corrompu');
       const result = await adminApi.restore(parsed.data);
       await Promise.all([refreshTrucks(), refreshDrivers(), refreshTrips(), refreshParcelExpeditions(), refreshExpenses(), refreshInvoices(), refreshThirdParties()]);
-      toast.success(`Restauration réussie — ${Object.values(result.counts).reduce((a, b) => a + b, 0)} enregistrements restaurés`);
+      toast.success(`Restauration réussie · ${Object.values(result.counts).reduce((a, b) => a + b, 0)} enregistrements restaurés`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Erreur lors de la restauration');
     } finally {
@@ -413,7 +413,7 @@ export default function Dashboard() {
         { label: 'Commandes actives', value: activeOrders, style: 'neutral' },
       ],
     });
-    toast.success('Export PDF — enregistrez via la fenêtre d’impression');
+    toast.success(‘Export PDF · enregistrez via la fenêtre d\’impression’);
   };
 
   return (
@@ -803,7 +803,7 @@ export default function Dashboard() {
           <CardHeader className="bg-gradient-to-br from-background to-muted/20 border-b">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg">{EMOJI.classement} Top 5 Camions — Encaissement</CardTitle>
+                <CardTitle className="text-lg">{EMOJI.classement} Top 5 Camions · Encaissement</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">Classement par performance</p>
               </div>
               <Package className="h-8 w-8 text-primary opacity-50" />
@@ -941,7 +941,7 @@ export default function Dashboard() {
                       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
                         <p className="font-semibold text-foreground text-sm sm:text-base truncate">
                           {order.designation}
-                          {order.destination ? ` — ${order.destination}` : ''}
+                          {order.destination ? ` · ${order.destination}` : ''}
                         </p>
                         <Badge className={`text-xs flex-shrink-0 ${orderStatusColor}`}>
                           {formatClientOrderStatusFr(order.statut)}

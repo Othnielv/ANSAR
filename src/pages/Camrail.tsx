@@ -607,7 +607,7 @@ export default function Camrail() {
   const dispatchLabel = dispatchWagon
     ? `Wagon ${dispatchWagon.wagon}`
     : dispatchSourceOp
-      ? `${dispatchSourceOp.destinataire || 'Opération'} — ${dispatchSourceOp.quantite} sacs`
+      ? `${dispatchSourceOp.destinataire || 'Opération'} · ${dispatchSourceOp.quantite} sacs`
       : '';
 
   const handleMultiDispatch = async () => {
@@ -1403,7 +1403,7 @@ export default function Camrail() {
         <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Dispatcher — {dispatchLabel}
+              Dispatcher · {dispatchLabel}
             </DialogTitle>
           </DialogHeader>
           {(dispatchWagon || dispatchSourceOp) && (

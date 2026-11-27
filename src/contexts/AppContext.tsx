@@ -386,7 +386,7 @@ function normalizeParcelLot(row: Record<string, unknown>): ParcelExpeditionLot {
     notes,
   ]
     .filter(Boolean)
-    .join(' — ');
+    .join(' · ');
   return {
     id,
     clients: entreprise,

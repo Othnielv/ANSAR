@@ -726,7 +726,7 @@ export default function DepotGarouaBoulai() {
                 }
                 onPdf={() =>
                   exportToPrintablePDF({
-                    title: 'Bons et marchandise — Garoua-Boulai',
+                    title: 'Bons et marchandise · Garoua-Boulai',
                     fileName: `depot_garoua_boulai_bons_${todayIso()}.pdf`,
                     headerColor: '#d97706',
                     headerTextColor: '#ffffff',

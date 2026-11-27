@@ -213,7 +213,7 @@ async function syncTjkLoadingAssignments(op, actor, previousLoadingId) {
       destination: op.destination || undefined,
       statut: 'confirmee',
       dateCommande: op.date,
-      notes: `TJK — bon ${bon.numeroBon || ''} ${tjkMarker(opId, s.id)}`.trim(),
+      notes: `TJK · bon ${bon.numeroBon || ''} ${tjkMarker(opId, s.id)}`.trim(),
     };
     let orderId = byShare.get(String(s.id));
     if (orderId) {

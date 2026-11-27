@@ -89,7 +89,7 @@ export function buildClientInvoiceDisplay(
     }
     for (const d of orderDeliveries) {
       const parts = [
-        `Transport — ${d.lieuLivraison} : ${Number(d.montantTransport ?? 0).toLocaleString('fr-FR')} FCFA`,
+        `Transport · ${d.lieuLivraison} : ${Number(d.montantTransport ?? 0).toLocaleString('fr-FR')} FCFA`,
         formatDeliveryExitModeFr(d.modeSortie),
       ];
       if (d.transportFournisseurNom) parts.push(d.transportFournisseurNom);
@@ -106,7 +106,7 @@ export function buildClientInvoiceDisplay(
     return {
       title:
         order && !order.clientId && order.clientNom?.trim()
-          ? `${order.clientNom.trim()} — ${order.designation}`
+          ? `${order.clientNom.trim()} · ${order.designation}`
           : invoice.factureClientLibelle || order?.designation || 'Commande client',
       lines: lines.filter(Boolean),
     };
@@ -145,7 +145,7 @@ export function buildClientInvoiceDisplay(
   }
 
   return {
-    title: invoice.factureClientLibelle || `Transport — ${order?.designation ?? 'livraison'}`,
+    title: invoice.factureClientLibelle || `Transport · ${order?.designation ?? 'livraison'}`,
     lines: lines.filter(Boolean),
   };
 }

@@ -96,14 +96,14 @@ async function ensureOrderInvoice(orderId, payment, actor) {
 
   const walkIn = !order.clientId ? order.clientNom?.trim() : undefined;
   const libelle = walkIn
-    ? `${walkIn} — ${order.designation}`
+    ? `${walkIn} · ${order.designation}`
     : order.designation;
   const notes = [
     order.reference ? `Commande ${order.reference}` : null,
     marchandise > 0 ? `Marchandise : ${marchandise} FCFA` : null,
     ...billable.map(
       (d) =>
-        `Livraison ${d.lieuLivraison || ''} — transport : ${deliveryTransportMontant(d)} FCFA`,
+        `Livraison ${d.lieuLivraison || ''} · transport : ${deliveryTransportMontant(d)} FCFA`,
     ),
   ]
     .filter(Boolean)

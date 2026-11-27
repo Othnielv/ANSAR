@@ -117,7 +117,7 @@ export default function Login() {
                       textValue={opt.login}
                       className="text-white/80 focus:bg-violet-500/20 focus:text-white"
                     >
-                      {opt.login} — {opt.roleLabel}
+                      {opt.login} · {opt.roleLabel}
                     </SelectItem>
                   ))}
                 </SelectContent>

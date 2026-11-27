@@ -448,7 +448,7 @@ export default function Invoices() {
                 modeLibelle: modeStored,
               });
               toast.success(
-                `Facture fournisseur soldée — ${paymentAmount.toLocaleString('fr-FR')} FCFA sortis de caisse`,
+                `Facture fournisseur soldée · ${paymentAmount.toLocaleString('fr-FR')} FCFA sortis de caisse`,
               );
             } else {
               await appendEntreeFromInvoicePayment({
@@ -462,8 +462,8 @@ export default function Invoices() {
               });
               toast.success(
                 factureSoldée
-                  ? `Facture soldée — ${paymentAmount.toLocaleString('fr-FR')} FCFA enregistrés en caisse`
-                  : `Encaissement caisse ${paymentAmount.toLocaleString('fr-FR')} FCFA — reste ${(selectedInvoice.montantTTC - nouveauTotalPaye).toLocaleString('fr-FR')} FCFA sur la facture`,
+                  ? `Facture soldée · ${paymentAmount.toLocaleString('fr-FR')} FCFA enregistrés en caisse`
+                  : `Encaissement caisse ${paymentAmount.toLocaleString('fr-FR')} FCFA · reste ${(selectedInvoice.montantTTC - nouveauTotalPaye).toLocaleString('fr-FR')} FCFA sur la facture`,
               );
             }
           } catch (err) {
@@ -483,8 +483,8 @@ export default function Invoices() {
               : '';
           toast.success(
             factureSoldée
-              ? `Facture soldée — versement${banqueNote} enregistré pour traçabilité`
-              : `Paiement versement${banqueNote} enregistré — reste ${(selectedInvoice.montantTTC - nouveauTotalPaye).toLocaleString('fr-FR')} FCFA`,
+              ? `Facture soldée · versement${banqueNote} enregistré pour traçabilité`
+              : `Paiement versement${banqueNote} enregistré · reste ${(selectedInvoice.montantTTC - nouveauTotalPaye).toLocaleString('fr-FR')} FCFA`,
           );
         } else if (nouveauTotalPaye >= selectedInvoice.montantTTC) {
           toast.success('Facture marquée comme payée complètement');
@@ -947,7 +947,7 @@ export default function Invoices() {
       branding: {
         companyName: COMPANY_NAME,
         tagline: COMPANY_TAGLINE,
-        documentLabel: 'Synthèse comptable — export filtré',
+        documentLabel: 'Synthèse comptable · export filtré',
       },
       hideDefaultStatBox: true,
       headerColor: '#1d4ed8',
@@ -3056,7 +3056,7 @@ export default function Invoices() {
                             return (
                               <SelectItem key={p.id} value={p.id}>
                                 {p.libelle.trim()}
-                                {fiche ? ` — ${fiche.nom}` : p.tierId ? ` — fiche ${p.tierId.slice(0, 8)}…` : ''}
+                                {fiche ? ` · ${fiche.nom}` : p.tierId ? ` · fiche ${p.tierId.slice(0, 8)}…` : ''}
                               </SelectItem>
                             );
                           })}
