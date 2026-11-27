@@ -1187,12 +1187,18 @@ export function ClientOperationsPanels({
         )}
       </section>
 
-      {clientMovements.length > 0 && (
+      {!isWalkIn && clientId && (
         <section>
           <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
             <Wallet className="h-4 w-4 text-blue-600" />
             Versements / Mouvements ({clientMovements.length})
           </h3>
+          {clientMovements.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Aucun versement enregistré en caisse ou opérations diverses pour ce client.
+            </p>
+          ) : (
+          <>
           <ul className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
             {clientMovements.map((m) => (
               <li key={`${m.source}-${m.id}`} className="rounded-lg border px-2.5 py-2 text-sm flex justify-between items-start gap-2">
@@ -1217,6 +1223,8 @@ export function ClientOperationsPanels({
             {' · '}
             Total sorties : {formatFcfa(clientMovements.filter((m) => m.type === 'sortie').reduce((s, m) => s + m.montant, 0))}
           </p>
+          </>
+          )}
         </section>
       )}
 
