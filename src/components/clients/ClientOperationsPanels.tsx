@@ -25,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, ClipboardList, Truck, Loader2, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, ClipboardList, Truck, Loader2, FileText, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   computeLineAmount,
@@ -84,6 +84,8 @@ import {
 } from '@/lib/client-initial-balance';
 import { linkDriverTruckSelection } from '@/lib/driver-truck-link';
 import { truckMissionLabel } from '@/lib/trip-mission-context';
+import { getCaisseTransactions, type CaisseTransaction } from '@/lib/caisse-local';
+import { getOperationsDiverses, type OperationDiverse } from '@/lib/operations-diverses';
 
 function formatFcfa(n: number): string {
   return `${Math.round(n).toLocaleString('fr-FR')} FCFA`;
@@ -156,6 +158,43 @@ export function ClientOperationsPanels({
         (a.dateLivraison ?? a.datePrevue ?? '').localeCompare(b.dateLivraison ?? b.datePrevue ?? ''),
       );
   }, [clientDeliveries, orders, clientId, isWalkIn]);
+
+  type ClientMovement = {
+    id: string;
+    source: 'caisse' | 'od';
+    type: 'entree' | 'sortie';
+    montant: number;
+    date: string;
+    description: string;
+    modePaiement?: string;
+  };
+
+  const clientMovements = useMemo<ClientMovement[]>(() => {
+    if (!clientId || isWalkIn) return [];
+    const caisseTxs = getCaisseTransactions()
+      .filter((t) => t.clientTierId === clientId)
+      .map((t): ClientMovement => ({
+        id: t.id,
+        source: 'caisse',
+        type: t.type,
+        montant: t.montant,
+        date: t.date,
+        description: t.description,
+        modePaiement: t.modePaiement,
+      }));
+    const odTxs = getOperationsDiverses()
+      .filter((o) => o.clientTierId === clientId)
+      .map((o): ClientMovement => ({
+        id: o.id,
+        source: 'od',
+        type: o.type,
+        montant: o.montant,
+        date: o.date,
+        description: o.description,
+        modePaiement: o.modePaiement,
+      }));
+    return [...caisseTxs, ...odTxs].sort((a, b) => b.date.localeCompare(a.date));
+  }, [clientId, isWalkIn]);
 
   const fournisseurs = useMemo(
     () =>
@@ -1132,6 +1171,39 @@ export function ClientOperationsPanels({
           </ul>
         )}
       </section>
+
+      {clientMovements.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
+            <Wallet className="h-4 w-4 text-blue-600" />
+            Versements / Mouvements ({clientMovements.length})
+          </h3>
+          <ul className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            {clientMovements.map((m) => (
+              <li key={`${m.source}-${m.id}`} className="rounded-lg border px-2.5 py-2 text-sm flex justify-between items-start gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{m.description || '(sans description)'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(m.date).toLocaleDateString('fr-FR')}
+                    {' · '}
+                    {m.source === 'caisse' ? 'Caisse' : 'Op. Diverses'}
+                    {m.modePaiement ? ` · ${m.modePaiement}` : ''}
+                  </p>
+                </div>
+                <span className={`shrink-0 font-semibold tabular-nums ${m.type === 'entree' ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {m.type === 'entree' ? '+' : '−'}
+                  {m.montant.toLocaleString('fr-FR')} F
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted-foreground mt-2">
+            Total versements : {formatFcfa(clientMovements.filter((m) => m.type === 'entree').reduce((s, m) => s + m.montant, 0))}
+            {' · '}
+            Total sorties : {formatFcfa(clientMovements.filter((m) => m.type === 'sortie').reduce((s, m) => s + m.montant, 0))}
+          </p>
+        </section>
+      )}
 
       <Dialog open={orderDialogOpen} onOpenChange={setOrderDialogOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
